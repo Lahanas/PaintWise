@@ -1,8 +1,8 @@
 # PaintWise
 
-**How much paint do I actually need?** PaintWise answers that in a few seconds.
+**How much paint do I actually need? And will this color even look good?** PaintWise answers both.
 
-You enter your rooms, and it tells you how many litres (or gallons) of paint to buy, and which cans to pick up at the store. It's made for painting contractors writing up a job and for homeowners doing it themselves.
+You enter your rooms, and it tells you how many litres (or gallons) of paint to buy, and which cans to pick up at the store. Then you can snap a photo of your wall with your phone and see it in a new color before you buy a single can. It's made for painting contractors writing up a job and for homeowners doing it themselves.
 
 **Try it:** [lahanas.github.io/PaintWise](https://lahanas.github.io/PaintWise)
 
@@ -22,6 +22,7 @@ So I built PaintWise: a tool that does that math properly and still feels simple
 - **Real-world details:** number of coats, the coverage printed on your can, rough or textured walls (which soak up more paint), and an optional primer coat.
 - **A shopping list, not just a number:** it picks the mix of can sizes that leaves you with the least paint left over.
 - **Metric or imperial:** switch between metres/litres and feet/gallons at any time, and your measurements convert automatically.
+- **See the color before you paint:** take a photo of your wall (or upload one), tap the wall, and it repaints it in the color you pick. It keeps the light and shadows of the room, so it looks natural. Hold a button to compare before and after, and save the result to share it. The photo never leaves your phone.
 - **Remembers your job:** close the page, come back later, and everything is still there.
 
 ## How the estimate works
@@ -33,11 +34,15 @@ paint     = wall area × coats × surface factor ÷ coverage + safety margin
 
 Rough walls add 15–30% paint, and the safety margin (10% by default) covers spills and touch-ups.
 
+## How the color preview works
+
+When you tap the wall, PaintWise spreads out from that spot and selects every connected pixel that has a similar color, stopping at sharp edges like door frames, furniture or a picture on the wall. It compares colors in a way that cares more about hue than brightness, so a wall that is lighter near the window and darker in the corner is still picked up as one wall. Then it swaps in the new color while keeping each pixel's original brightness, so shadows and lighting stay realistic. Everything runs in the browser on a `<canvas>`, without any server.
+
 ## How it's built
 
 - **Plain HTML, CSS and JavaScript.** There's no framework and no build step, so the app loads instantly and is free to host on GitHub Pages.
-- **The math is separate from the page.** All the calculations live in [`src/estimator.js`](src/estimator.js) and don't depend on the browser, which makes them easy to test and reuse.
-- **Tested.** Unit tests cover the math with Node's built-in test runner, and they run on every push with GitHub Actions.
+- **The logic is separate from the page.** The paint math lives in [`src/estimator.js`](src/estimator.js) and the wall recoloring in [`src/recolor.js`](src/recolor.js). Neither depends on the browser, which makes them easy to test and reuse.
+- **Tested.** Unit tests cover the math and the recoloring with Node's built-in test runner, and they run on every push with GitHub Actions.
 - **Responsive and accessible.** It works on a phone on the job site, and it supports dark mode.
 
 ## Run it yourself
@@ -53,8 +58,9 @@ npm test        # run the tests
 
 - [x] v0.1: rooms, doors and windows, coats, coverage, can sizes
 - [x] v0.2: custom walls, surface types, primer
-- [ ] v0.3: paint prices and a printable quote for clients
-- [ ] v0.4: save and share projects
+- [x] v0.3: color preview on a photo of your wall
+- [ ] v0.4: paint prices and a printable quote for clients
+- [ ] v0.5: live camera preview, and save and share projects
 
 ## License
 

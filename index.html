@@ -51,16 +51,28 @@
   </main>
 
   <template id="room-template">
-    <fieldset class="room">
+    <fieldset class="room" data-mode="rect">
       <legend><input class="room-name" data-field="name" aria-label="Room name" /></legend>
       <button type="button" class="remove" aria-label="Remove room">×</button>
       <div class="grid">
-        <label><span>Length <span class="unit" data-unit="length">m</span></span><input data-field="length" type="number" min="0" step="0.01" /></label>
-        <label><span>Width <span class="unit" data-unit="length">m</span></span><input data-field="width" type="number" min="0" step="0.01" /></label>
-        <label><span>Height <span class="unit" data-unit="length">m</span></span><input data-field="height" type="number" min="0" step="0.01" /></label>
+        <label>Shape
+          <select data-field="mode">
+            <option value="rect">Rectangle</option>
+            <option value="walls">Custom walls</option>
+          </select>
+        </label>
+        <label class="rect-only"><span>Length <span class="unit" data-unit="length">m</span></span><input data-field="length" type="number" min="0" step="0.01" /></label>
+        <label class="rect-only"><span>Width <span class="unit" data-unit="length">m</span></span><input data-field="width" type="number" min="0" step="0.01" /></label>
+        <label class="rect-only"><span>Height <span class="unit" data-unit="length">m</span></span><input data-field="height" type="number" min="0" step="0.01" /></label>
         <label>Doors<input data-field="doors" type="number" min="0" step="1" /></label>
         <label>Windows<input data-field="windows" type="number" min="0" step="1" /></label>
         <label class="check"><input data-field="includeCeiling" type="checkbox" /> Paint ceiling</label>
+        <label class="walls-only ceiling-area"><span>Ceiling area <span class="unit" data-unit="area">m²</span></span><input data-field="ceilingArea" type="number" min="0" step="0.1" /></label>
+      </div>
+      <div class="walls-only walls">
+        <p class="hint">Add each wall separately. Use this for L-shaped rooms, sloped ceilings, or a single feature wall.</p>
+        <ol class="wall-list"></ol>
+        <button type="button" class="btn btn-secondary add-wall">+ Add wall</button>
       </div>
       <details>
         <summary>Custom door and window sizes</summary>
@@ -72,6 +84,14 @@
         </div>
       </details>
     </fieldset>
+  </template>
+
+  <template id="wall-template">
+    <li class="wall">
+      <label><span>Width <span class="unit" data-unit="length">m</span></span><input data-wall="width" type="number" min="0" step="0.01" /></label>
+      <label><span>Height <span class="unit" data-unit="length">m</span></span><input data-wall="height" type="number" min="0" step="0.01" /></label>
+      <button type="button" class="remove-wall" aria-label="Remove wall">×</button>
+    </li>
   </template>
 
   <footer class="site-footer">

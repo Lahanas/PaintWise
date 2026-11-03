@@ -41,6 +41,7 @@ function canLabel(size, system) {
 function renderUnits() {
   const u = UNIT_SYSTEMS[state.system];
   document.querySelectorAll('[data-unit="length"]').forEach((el) => (el.textContent = u.length));
+  document.querySelectorAll('[data-unit="area"]').forEach((el) => (el.textContent = u.area));
   document.querySelectorAll('[data-unit="coverage"]').forEach((el) => (el.textContent = `${u.area}/${u.volume}`));
   document.querySelectorAll('[data-field="doorWidth"]').forEach((el) => (el.placeholder = u.door.width));
   document.querySelectorAll('[data-field="doorHeight"]').forEach((el) => (el.placeholder = u.door.height));
@@ -60,8 +61,22 @@ function renderRooms() {
       else input.value = room[key] ?? '';
       input.addEventListener('input', () => {
         room[key] = input.type === 'checkbox' ? input.checked : input.type === 'number' ? (input.value === '' ? '' : Number(input.value)) : input.value;
+        if (key === 'mode' && room.mode === 'walls' && !(room.walls && room.walls.length)) {
+          room.walls = wallsFromRectangle(room);
+          renderWalls(node, room);
+        }
+        syncRoomClasses(node, room);
         update();
       });
+    });
+    syncRoomClasses(node, room);
+    renderWalls(node, room);
+    node.querySelector('.add-wall').addEventListener('click', () => {
+      room.walls = room.walls || [];
+      const last = room.walls[room.walls.length - 1];
+      room.walls.push({ width: '', height: last ? last.height : room.height || '' });
+      renderWalls(node, room);
+      update();
     });
     node.querySelector('.remove').addEventListener('click', () => {
       state.rooms.splice(i, 1);
@@ -73,12 +88,47 @@ function renderRooms() {
   renderUnits();
 }
 
+// Start custom walls from the rectangle the user already typed, so nothing is lost.
+function wallsFromRectangle(room) {
+  const h = room.height || '';
+  return [room.length, room.width, room.length, room.width].map((w) => ({ width: w || '', height: h }));
+}
+
+function syncRoomClasses(node, room) {
+  node.dataset.mode = room.mode === 'walls' ? 'walls' : 'rect';
+  node.classList.toggle('has-ceiling', !!room.includeCeiling);
+}
+
+function renderWalls(node, room) {
+  const list = node.querySelector('.wall-list');
+  list.innerHTML = '';
+  const tpl = $('#wall-template');
+  (room.walls || []).forEach((wall, i) => {
+    const li = tpl.content.firstElementChild.cloneNode(true);
+    li.querySelectorAll('[data-wall]').forEach((input) => {
+      const key = input.dataset.wall;
+      input.value = wall[key] ?? '';
+      input.addEventListener('input', () => {
+        wall[key] = input.value === '' ? '' : Number(input.value);
+        update();
+      });
+    });
+    li.querySelector('.remove-wall').addEventListener('click', () => {
+      room.walls.splice(i, 1);
+      renderWalls(node, room);
+      update();
+    });
+    list.appendChild(li);
+  });
+  renderUnits();
+}
+
 function renderResult() {
   const r = estimate(state);
   const u = r.units;
   const el = $('#result');
   if (r.area <= 0) {
-    el.innerHTML = '<p class="empty">Add a room with length, width and height to see your estimate.</p>';
+    el.innerHTML = '<p class="empty">Add a room with its measurements to see your estimate.</p>';
     return;
   }
   const cans = r.purchase.cans.map((c) => `<li><strong>${c.count} ×</strong> ${canLabel(c.size, r.system)}</li>`).join('');
@@ -120,8 +170,12 @@ function bindSettings() {
     // Convert existing dimensions so switching units keeps the same room.
     const factor = system.value === 'imperial' ? FT_PER_M : 1 / FT_PER_M;
     state.rooms.forEach((room) => {
-      LENGTH_FIELDS.forEach((key) => {
-        if (room[key] !== '' && room[key] != null) room[key] = Math.round(room[key] * factor * 100) / 100;
+      const convert = (v, f) => (v === '' || v == null ? v : Math.round(v * f * 100) / 100);
+      LENGTH_FIELDS.forEach((key) => { room[key] = convert(room[key], factor); });
+      room.ceilingArea = convert(room.ceilingArea, factor * factor);
+      (room.walls || []).forEach((w) => {
+        w.width = convert(w.width, factor);
+        w.height = convert(w.height, factor);
       });
     });
     renderRooms();

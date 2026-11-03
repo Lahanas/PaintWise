@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Wall Paint Estimator</title>
+  <meta name="description" content="Work out how much paint you need for your walls, room by room." />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="site-header">
+    <h1>Wall Paint Estimator</h1>
+    <p>Enter your rooms, subtract doors and windows, and get how much paint to buy.</p>
+  </header>
+
+  <main class="layout">
+    <section class="panel" aria-labelledby="settings-title">
+      <h2 id="settings-title">Job settings</h2>
+      <div class="grid">
+        <label>Units
+          <select id="system">
+            <option value="metric">Metric (m, litres)</option>
+            <option value="imperial">Imperial (ft, US gallons)</option>
+          </select>
+        </label>
+        <label>Coats
+          <input id="coats" type="number" min="1" max="6" step="1" value="2" />
+        </label>
+        <label><span>Coverage <span class="unit" data-unit="coverage">m²/L</span></span>
+          <input id="coverage" type="number" min="1" step="0.5" value="10" />
+        </label>
+        <label><span>Extra margin <span class="unit">%</span></span>
+          <input id="waste" type="number" min="0" max="50" step="1" value="10" />
+        </label>
+      </div>
+      <p class="hint">Coverage is printed on the paint can. Typical values are 10–12 m²/L or 350–400 ft²/gal. Rough or porous walls take more paint, so lower it.</p>
+    </section>
+
+    <section class="panel" aria-labelledby="rooms-title">
+      <div class="panel-head">
+        <h2 id="rooms-title">Rooms</h2>
+        <button id="add-room" type="button" class="btn">+ Add room</button>
+      </div>
+      <div id="rooms"></div>
+    </section>
+
+    <section class="panel result" aria-live="polite" aria-labelledby="result-title">
+      <h2 id="result-title">Estimate</h2>
+      <div id="result"></div>
+    </section>
+  </main>
+
+  <template id="room-template">
+    <fieldset class="room">
+      <legend><input class="room-name" data-field="name" aria-label="Room name" /></legend>
+      <button type="button" class="remove" aria-label="Remove room">×</button>
+      <div class="grid">
+        <label><span>Length <span class="unit" data-unit="length">m</span></span><input data-field="length" type="number" min="0" step="0.01" /></label>
+        <label><span>Width <span class="unit" data-unit="length">m</span></span><input data-field="width" type="number" min="0" step="0.01" /></label>
+        <label><span>Height <span class="unit" data-unit="length">m</span></span><input data-field="height" type="number" min="0" step="0.01" /></label>
+        <label>Doors<input data-field="doors" type="number" min="0" step="1" /></label>
+        <label>Windows<input data-field="windows" type="number" min="0" step="1" /></label>
+        <label class="check"><input data-field="includeCeiling" type="checkbox" /> Paint ceiling</label>
+      </div>
+      <details>
+        <summary>Custom door and window sizes</summary>
+        <div class="grid">
+          <label>Door width<input data-field="doorWidth" type="number" min="0" step="0.01" /></label>
+          <label>Door height<input data-field="doorHeight" type="number" min="0" step="0.01" /></label>
+          <label>Window width<input data-field="windowWidth" type="number" min="0" step="0.01" /></label>
+          <label>Window height<input data-field="windowHeight" type="number" min="0" step="0.01" /></label>
+        </div>
+      </details>
+    </fieldset>
+  </template>
+
+  <footer class="site-footer">
+    <p>Estimates only. Always check the coverage on your paint can and buy a little extra for touch-ups.</p>
+  </footer>
+
+  <script type="module" src="src/app.js"></script>
+</body>
+</html>

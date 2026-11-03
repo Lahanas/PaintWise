@@ -9,6 +9,7 @@ export const UNIT_SYSTEMS = {
     door: { width: 0.9, height: 2.1 },
     window: { width: 1.2, height: 1.2 },
     cans: [10, 5, 2.5, 1], // litres
+    primerCoverage: 8,
   },
   imperial: {
     length: 'ft',
@@ -18,6 +19,7 @@ export const UNIT_SYSTEMS = {
     door: { width: 3, height: 7 },
     window: { width: 4, height: 4 },
     cans: [5, 1, 0.25], // 5-gallon bucket, gallon, quart
+    primerCoverage: 300,
   },
 };
 
@@ -26,8 +28,15 @@ const num = (v) => {
   return Number.isFinite(n) && n > 0 ? n : 0;
 };
 
-/** Gross wall area of a rectangular room: perimeter × height. */
+/**
+ * Gross wall area of a room.
+ * Rectangle mode: perimeter × height.
+ * Walls mode: sum of each wall's width × height (for L-shaped rooms, slopes, feature walls...).
+ */
 export function roomWallArea(room) {
+  if (room.mode === 'walls') {
+    return (room.walls || []).reduce((sum, w) => sum + num(w.width) * num(w.height), 0);
+  }
   return 2 * (num(room.length) + num(room.width)) * num(room.height);
 }
 
@@ -44,7 +53,10 @@ export function openingsArea(room, system) {
 /** Paintable area for a room, never negative. Ceiling is optional. */
 export function roomPaintableArea(room, system) {
   const walls = Math.max(0, roomWallArea(room) - openingsArea(room, system));
-  const ceiling = room.includeCeiling ? num(room.length) * num(room.width) : 0;
+  let ceiling = 0;
+  if (room.includeCeiling) {
+    ceiling = room.mode === 'walls' ? num(room.ceilingArea) : num(room.length) * num(room.width);
+  }
   return { walls, ceiling, total: walls + ceiling };
 }
 

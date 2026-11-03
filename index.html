@@ -32,8 +32,15 @@
         <label><span>Extra margin <span class="unit">%</span></span>
           <input id="waste" type="number" min="0" max="50" step="1" value="10" />
         </label>
+        <label class="wide">Wall surface
+          <select id="surface"></select>
+        </label>
+        <label class="check"><input id="primer" type="checkbox" /> Add a primer coat</label>
+        <label class="primer-only"><span>Primer coverage <span class="unit" data-unit="coverage">m²/L</span></span>
+          <input id="primer-coverage" type="number" min="1" step="0.5" value="8" />
+        </label>
       </div>
-      <p class="hint">Coverage is printed on the paint can. Typical values are 10–12 m²/L or 350–400 ft²/gal. Rough or porous walls take more paint, so lower it.</p>
+      <p class="hint">Coverage is printed on the paint can. Typical values are 10–12 m²/L or 350–400 ft²/gal. Use a primer on new plaster, bare wood, or when going from a dark colour to a light one.</p>
     </section>
 
     <section class="panel" aria-labelledby="rooms-title">

@@ -85,3 +85,7 @@ th:not(:first-child), td:not(:first-child) { text-align: right; }
 .wall { display: grid; grid-template-columns: 1fr 1fr auto; gap: 8px; align-items: end; }
 .remove-wall { border: 0; background: none; color: var(--muted); font-size: 1.25rem; cursor: pointer; padding: 8px; }
 .btn-secondary { background: var(--accent-soft); color: var(--accent); }
+label.wide { grid-column: span 2; }
+@media (max-width: 400px) { label.wide { grid-column: auto; } }
+.panel:not(.with-primer) .primer-only { display: none; }
+.result .primer-block { margin-top: 16px; padding-top: 4px; border-top: 1px solid var(--border); }

@@ -23,6 +23,13 @@ export const UNIT_SYSTEMS = {
   },
 };
 
+// Rough or porous walls soak up more paint than the can's coverage figure assumes.
+export const SURFACES = {
+  smooth: { label: 'Smooth / previously painted', factor: 1 },
+  textured: { label: 'Light texture', factor: 1.15 },
+  rough: { label: 'Rough or porous (new plaster, brick, stucco)', factor: 1.3 },
+};
+
 const num = (v) => {
   const n = Number(v);
   return Number.isFinite(n) && n > 0 ? n : 0;
@@ -108,23 +115,58 @@ export function pickCans(needed, sizes) {
  * @param {number} input.coats
  * @param {number} input.coverage area per volume unit
  * @param {number} input.wastePercent extra margin for spills, texture, touch-ups
+ * @param {'smooth'|'textured'|'rough'} [input.surface]
+ * @param {boolean} [input.primer] add one coat of primer
+ * @param {number} [input.primerCoverage] area per volume unit for the primer
  */
-export function estimate({ system = 'metric', rooms = [], coats = 2, coverage, wastePercent = 10 }) {
+export function estimate({
+  system = 'metric',
+  rooms = [],
+  coats = 2,
+  coverage,
+  wastePercent = 10,
+  surface = 'smooth',
+  primer = false,
+  primerCoverage,
+}) {
   const cfg = UNIT_SYSTEMS[system];
   const cov = num(coverage) || cfg.defaultCoverage;
   const nCoats = Math.max(1, Math.round(num(coats) || 1));
   const waste = Math.max(0, Number(wastePercent) || 0);
+  const surfaceFactor = (SURFACES[surface] || SURFACES.smooth).factor;
+  const margin = 1 + waste / 100;
 
   const perRoom = rooms.map((room) => {
     const area = roomPaintableArea(room, system);
-    const paint = (area.total * nCoats) / cov;
+    const paint = (area.total * nCoats * surfaceFactor) / cov;
     return { name: room.name || 'Room', ...area, paint };
   });
 
   const area = perRoom.reduce((s, r) => s + r.total, 0);
-  const basePaint = (area * nCoats) / cov;
-  const paint = basePaint * (1 + waste / 100);
+  const basePaint = (area * nCoats * surfaceFactor) / cov;
+  const paint = basePaint * margin;
   const purchase = pickCans(paint, cfg.cans);
 
-  return { system, units: cfg, coats: nCoats, coverage: cov, wastePercent: waste, perRoom, area, basePaint, paint, purchase };
+  let primerResult = null;
+  if (primer) {
+    const pCov = num(primerCoverage) || cfg.primerCoverage;
+    const amount = ((area * surfaceFactor) / pCov) * margin;
+    primerResult = { coverage: pCov, paint: amount, purchase: pickCans(amount, cfg.cans) };
+  }
+
+  return {
+    system,
+    units: cfg,
+    coats: nCoats,
+    coverage: cov,
+    wastePercent: waste,
+    surface,
+    surfaceFactor,
+    perRoom,
+    area,
+    basePaint,
+    paint,
+    purchase,
+    primer: primerResult,
+  };
 }

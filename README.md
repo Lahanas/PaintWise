@@ -10,7 +10,9 @@ You enter your rooms, and it tells you how many litres (or gallons) of paint to 
 
 ## Why I built it
 
-Working out paint by hand is easy to get wrong. You have to measure every wall, take out the doors and windows, multiply by the number of coats, and check the coverage on the can. Most people end up guessing. Then they either make a second trip to the store or are left with half a can in the garage. I wanted a tool that does the math properly and still feels simple to use.
+This past summer, my parents decided to repaint the house and change the colors. The hardest part wasn't choosing the colors. It was figuring out how much paint we'd actually need. Between measuring every wall, skipping the doors and windows, and counting coats, we ended up guessing, and we overbought. A lot of paint went unused.
+
+So I built PaintWise: a tool that does that math properly and still feels simple, so the next family (or the next contractor) buys the right amount the first time.
 
 ## What it does
 

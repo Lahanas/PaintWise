@@ -76,3 +76,12 @@ table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
 th, td { text-align: left; padding: 6px 4px; border-bottom: 1px solid var(--border); }
 th:not(:first-child), td:not(:first-child) { text-align: right; }
 .empty { color: var(--muted); }
+.room[data-mode="rect"] .walls-only,
+.room[data-mode="walls"] .rect-only { display: none; }
+.room:not(.has-ceiling) .ceiling-area { display: none; }
+.walls { margin-top: 12px; }
+.walls .hint { margin: 0 0 8px; }
+.wall-list { margin: 0 0 8px; padding-left: 24px; display: grid; gap: 8px; }
+.wall { display: grid; grid-template-columns: 1fr 1fr auto; gap: 8px; align-items: end; }
+.remove-wall { border: 0; background: none; color: var(--muted); font-size: 1.25rem; cursor: pointer; padding: 8px; }
+.btn-secondary { background: var(--accent-soft); color: var(--accent); }

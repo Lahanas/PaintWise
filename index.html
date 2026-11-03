@@ -10,10 +10,14 @@
 <body>
   <header class="site-header">
     <h1>PaintWise</h1>
-    <p>Enter your rooms, subtract doors and windows, and get how much paint to buy.</p>
+    <p>Work out how much paint to buy, and see the color on your own wall before you paint.</p>
+    <nav class="tabs" aria-label="Tools">
+      <a href="#estimate" class="tab" data-tab="estimate">Paint calculator</a>
+      <a href="#preview" class="tab" data-tab="preview">Color preview</a>
+    </nav>
   </header>
 
-  <main class="layout">
+  <main class="layout" id="tab-estimate">
     <section class="panel" aria-labelledby="settings-title">
       <h2 id="settings-title">Job settings</h2>
       <div class="grid">
@@ -54,6 +58,46 @@
     <section class="panel result" aria-live="polite" aria-labelledby="result-title">
       <h2 id="result-title">Estimate</h2>
       <div id="result"></div>
+    </section>
+  </main>
+
+  <main class="preview" id="tab-preview" hidden>
+    <section class="panel" aria-labelledby="preview-title">
+      <h2 id="preview-title">See your wall in a new color</h2>
+      <p class="hint preview-intro">Take a photo of the wall (or upload one), then tap the wall to paint it. Your photo stays on your device; nothing is uploaded.</p>
+      <div class="preview-actions">
+        <label class="btn file-btn">Take a photo
+          <input id="photo-camera" type="file" accept="image/*" capture="environment" />
+        </label>
+        <label class="btn btn-secondary file-btn">Upload a photo
+          <input id="photo-upload" type="file" accept="image/*" />
+        </label>
+      </div>
+
+      <div class="preview-body">
+        <div class="stage" id="stage">
+          <canvas id="preview-canvas" aria-label="Wall photo. Tap a wall to paint it."></canvas>
+          <p class="stage-empty" id="stage-empty">Your photo will show up here.</p>
+        </div>
+
+        <div class="preview-tools">
+          <h3>Pick a color</h3>
+          <div class="swatches" id="swatches" role="radiogroup" aria-label="Color"></div>
+          <label class="color-custom"><span>Or any color</span><input id="paint-color" type="color" value="#8fa98b" /></label>
+
+          <label><span>Edge sensitivity <span class="unit" id="tolerance-value">30</span></span>
+            <input id="tolerance" type="range" min="5" max="80" value="30" />
+          </label>
+          <p class="hint">If the paint spills onto furniture or the ceiling, lower it. If it misses parts of the wall, raise it or tap the missed spot.</p>
+
+          <div class="tool-row">
+            <button type="button" class="btn btn-secondary" id="undo-tap" disabled>Undo</button>
+            <button type="button" class="btn btn-secondary" id="clear-taps" disabled>Clear</button>
+            <button type="button" class="btn btn-secondary" id="hold-original" disabled>Hold to compare</button>
+            <button type="button" class="btn" id="save-image" disabled>Save image</button>
+          </div>
+        </div>
+      </div>
     </section>
   </main>
 
@@ -106,5 +150,6 @@
   </footer>
 
   <script type="module" src="src/app.js"></script>
+  <script type="module" src="src/preview.js"></script>
 </body>
 </html>

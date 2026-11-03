@@ -1,4 +1,4 @@
-import { estimate, UNIT_SYSTEMS } from './estimator.js';
+import { estimate, UNIT_SYSTEMS, SURFACES } from './estimator.js';
 
 const STORAGE_KEY = 'wpe:v1';
 const FT_PER_M = 3.28084;
@@ -10,13 +10,16 @@ const defaultState = () => ({
   coats: 2,
   coverage: UNIT_SYSTEMS.metric.defaultCoverage,
   wastePercent: 10,
+  surface: 'smooth',
+  primer: false,
+  primerCoverage: UNIT_SYSTEMS.metric.primerCoverage,
   rooms: [{ name: 'Living room', length: 5, width: 4, height: 2.5, doors: 1, windows: 2, includeCeiling: false }],
 });
 
 function load() {
   try {
     const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
-    if (saved && Array.isArray(saved.rooms)) return saved;
+    if (saved && Array.isArray(saved.rooms)) return { ...defaultState(), ...saved };
   } catch { /* storage unavailable */ }
   return defaultState();
 }
@@ -138,13 +141,25 @@ function renderResult() {
   el.innerHTML = `
     <div class="headline">
       <div><span class="big">${fmt(r.paint, 1)}</span> <span>${u.volume} of paint</span></div>
-      <p>${fmt(r.area, 1)} ${u.area} paintable × ${r.coats} coat${r.coats > 1 ? 's' : ''} ÷ ${fmt(r.coverage)} ${u.area}/${u.volume}, plus ${fmt(r.wastePercent, 0)}% margin</p>
+      <p>${fmt(r.area, 1)} ${u.area} paintable × ${r.coats} coat${r.coats > 1 ? 's' : ''} ÷ ${fmt(r.coverage)} ${u.area}/${u.volume}${r.surfaceFactor !== 1 ? `, +${fmt((r.surfaceFactor - 1) * 100, 0)}% for the surface` : ''}, plus ${fmt(r.wastePercent, 0)}% margin</p>
     </div>
-    <h3>What to buy</h3>
+    <h3>Paint to buy</h3>
     <ul class="cans">${cans}</ul>
     <p class="hint">That is ${fmt(r.purchase.total)} ${u.volume} in total, ${fmt(r.purchase.total - r.paint)} ${u.volume} more than needed.</p>
+    ${r.primer ? primerHtml(r) : ''}
     <h3>By room</h3>
     <table><thead><tr><th>Room</th><th>Area</th><th>Paint (no margin)</th></tr></thead><tbody>${rows}</tbody></table>`;
+}
+
+function primerHtml(r) {
+  const u = r.units;
+  const cans = r.primer.purchase.cans.map((c) => `<li><strong>${c.count} ×</strong> ${canLabel(c.size, r.system)}</li>`).join('');
+  return `
+    <div class="primer-block">
+      <h3>Primer: ${fmt(r.primer.paint, 1)} ${u.volume}</h3>
+      <p class="hint">One coat at ${fmt(r.primer.coverage)} ${u.area}/${u.volume}, plus the same margin.</p>
+      <ul class="cans">${cans}</ul>
+    </div>`;
 }
 
 function escapeHtml(s) {
@@ -166,6 +181,25 @@ function bindSettings() {
   coverage.value = state.coverage;
   waste.value = state.wastePercent;
 
+  const surface = $('#surface');
+  const primer = $('#primer');
+  const primerCoverage = $('#primer-coverage');
+  const settingsPanel = surface.closest('.panel');
+  surface.innerHTML = Object.entries(SURFACES)
+    .map(([key, s]) => `<option value="${key}">${s.label}</option>`)
+    .join('');
+  surface.value = state.surface;
+  primer.checked = !!state.primer;
+  primerCoverage.value = state.primerCoverage;
+  settingsPanel.classList.toggle('with-primer', !!state.primer);
+  surface.addEventListener('change', () => { state.surface = surface.value; update(); });
+  primer.addEventListener('change', () => {
+    state.primer = primer.checked;
+    settingsPanel.classList.toggle('with-primer', state.primer);
+    update();
+  });
+  primerCoverage.addEventListener('input', () => { state.primerCoverage = Number(primerCoverage.value); update(); });
+
   system.addEventListener('change', () => {
     // Convert existing dimensions so switching units keeps the same room.
     const factor = system.value === 'imperial' ? FT_PER_M : 1 / FT_PER_M;
@@ -182,6 +216,8 @@ function bindSettings() {
     state.system = system.value;
     state.coverage = UNIT_SYSTEMS[state.system].defaultCoverage;
     coverage.value = state.coverage;
+    state.primerCoverage = UNIT_SYSTEMS[state.system].primerCoverage;
+    primerCoverage.value = state.primerCoverage;
     renderUnits();
     update();
   });

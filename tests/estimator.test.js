@@ -52,3 +52,30 @@ test('pickCans prefers one big can when it is an exact fit', () => {
   const p = pickCans(9.6, [10, 5, 2.5, 1]);
   assert.deepEqual(p.cans, [{ size: 10, count: 1 }]);
 });
+
+test('custom walls mode sums each wall', () => {
+  const room = { mode: 'walls', walls: [{ width: 4, height: 2.5 }, { width: 2, height: 2.5 }, { width: 3, height: 1.8 }], doors: 1 };
+  close(roomWallArea(room), 10 + 5 + 5.4);
+  close(roomPaintableArea(room, 'metric').walls, 20.4 - 0.9 * 2.1);
+});
+
+test('custom walls mode uses ceilingArea for the ceiling', () => {
+  const room = { mode: 'walls', walls: [{ width: 4, height: 2.5 }], includeCeiling: true, ceilingArea: 9, length: 100, width: 100 };
+  close(roomPaintableArea(room, 'metric').ceiling, 9);
+});
+
+test('rough surface needs more paint', () => {
+  const base = { system: 'metric', rooms: [{ length: 4, width: 3, height: 2.5 }], coats: 2, coverage: 10, wastePercent: 0 };
+  close(estimate({ ...base, surface: 'smooth' }).paint, 7);
+  close(estimate({ ...base, surface: 'rough' }).paint, 9.1);
+});
+
+test('primer is one coat at primer coverage, with margin', () => {
+  const e = estimate({ system: 'metric', rooms: [{ length: 4, width: 3, height: 2.5 }], coats: 2, coverage: 10, wastePercent: 10, primer: true });
+  close(e.primer.paint, (35 / 8) * 1.1);
+  assert.ok(e.primer.purchase.total >= e.primer.paint);
+});
+
+test('no primer by default', () => {
+  assert.equal(estimate({ rooms: [{ length: 4, width: 3, height: 2.5 }] }).primer, null);
+});

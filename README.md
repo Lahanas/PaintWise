@@ -20,7 +20,8 @@ So I built PaintWise: a tool that does that math properly and still feels simple
 - **Doors and windows are taken out** automatically, using standard sizes or your own measurements.
 - **Odd-shaped rooms:** switch a room to "custom walls" and enter each wall on its own (for L-shaped rooms, a sloped ceiling or a single feature wall).
 - **Real-world details:** number of coats, the coverage printed on your can, rough or textured walls (which soak up more paint), and an optional primer coat.
-- **A shopping list, not just a number:** it picks the mix of can sizes that leaves you with the least paint left over.
+- **A shopping list, not just a number:** it picks the mix of can sizes that leaves you with the least paint left over. Add your store's prices and it picks the cheapest mix instead (one big bucket often costs less than three small tins).
+- **Costs and quotes for contractors:** add paint prices, a labour rate and tax to get the full job cost. Fill in your client's details and print a clean, one-page quote, or save it as a PDF to send.
 - **Metric or imperial:** switch between metres/litres and feet/gallons at any time, and your measurements convert automatically.
 - **See the color before you paint:** take a photo of your wall (or upload one), tap the wall, and it repaints it in the color you pick. It keeps the light and shadows of the room, so it looks natural. Hold a button to compare before and after, and save the result to share it. The photo never leaves your phone.
 - **Remembers your job:** close the page, come back later, and everything is still there.
@@ -59,7 +60,7 @@ npm test        # run the tests
 - [x] v0.1: rooms, doors and windows, coats, coverage, can sizes
 - [x] v0.2: custom walls, surface types, primer
 - [x] v0.3: color preview on a photo of your wall
-- [ ] v0.4: paint prices and a printable quote for clients
+- [x] v0.4: paint prices and a printable quote for clients
 - [ ] v0.5: live camera preview, and save and share projects
 
 ## License

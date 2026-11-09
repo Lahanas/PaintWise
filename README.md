@@ -24,7 +24,8 @@ So I built PaintWise: a tool that does that math properly and still feels simple
 - **Costs and quotes for contractors:** add paint prices, a labour rate and tax to get the full job cost. Fill in your client's details and print a clean, one-page quote, or save it as a PDF to send.
 - **Metric or imperial:** switch between metres/litres and feet/gallons at any time, and your measurements convert automatically.
 - **See the color before you paint:** point your phone's live camera at the wall (or take or upload a photo), tap the wall, and it repaints it in the color you pick. In live mode the new color follows the camera as you move. It keeps the light and shadows of the room, so it looks natural. Hold a button to compare before and after, and save the result to share it. The photo never leaves your phone.
-- **Save and share projects:** keep several jobs (the living room, the kitchen, a client's house) and switch between them. Share any project as a link: whoever opens it gets their own copy, with no account needed.
+- **Accounts and cloud projects:** create a free account and your projects are saved online, so you can start measuring on your phone and finish the quote on your laptop. Without an account, everything still works and is saved on your device.
+- **Share projects:** send any project as a link; whoever opens it gets their own copy, no account needed.
 - **Remembers your job:** close the page, come back later, and everything is still there.
 
 ## How the estimate works
@@ -42,20 +43,54 @@ When you tap the wall, PaintWise spreads out from that spot and selects every co
 
 ## How it's built
 
-- **Plain HTML, CSS and JavaScript.** There's no framework and no build step, so the app loads instantly and is free to host on GitHub Pages.
-- **The logic is separate from the page.** The paint math lives in [`src/estimator.js`](src/estimator.js) and the wall recoloring in [`src/recolor.js`](src/recolor.js). Neither depends on the browser, which makes them easy to test and reuse.
-- **No backend, still shareable.** A shared project travels inside the link itself: the project is compressed and encoded into the URL, so there's no database or sign-up to manage.
-- **Tested.** Unit tests cover the math, the recoloring and project sharing with Node's built-in test runner, and they run on every push with GitHub Actions.
-- **Responsive and accessible.** It works on a phone on the job site, and it supports dark mode.
+```
+ Browser (HTML, CSS, JavaScript)            Vercel Functions (Node.js)           Postgres (Neon)
+ ─────────────────────────────────          ──────────────────────────           ───────────────
+ paint math, color preview, quote  ──API──▶ /api/auth/*   sign up, log in  ────▶ users
+ works offline, no account needed          /api/projects  save and load    ────▶ sessions
+                                                                                  projects
+```
+
+**Frontend**
+- **Plain HTML, CSS and JavaScript**, no framework and no build step, so it loads instantly on a phone at the job site.
+- **The logic is separate from the page.** The paint math ([`src/estimator.js`](src/estimator.js)), the wall recoloring ([`src/recolor.js`](src/recolor.js)) and project sharing ([`src/projects.js`](src/projects.js)) don't depend on the browser, so they are easy to test.
+- **Works with or without the backend.** If the API isn't there (for example on GitHub Pages), the account features hide themselves and projects are saved on the device.
+
+**Backend** ([`api/`](api))
+- **Serverless API on Vercel Functions**: each file in `api/` is one endpoint, using Vercel's file-based routing.
+- **Postgres database** with three tables: `users`, `sessions` and `projects`. Each project is stored as `jsonb`, so the app can add fields without database migrations. Tables are created automatically on first run.
+- **Accounts built from scratch, no auth library:**
+  - Passwords are hashed with `scrypt` and a random salt per user. They are never stored or logged as typed.
+  - Logging in creates a random session token, sent in an `HttpOnly`, `Secure`, `SameSite=Lax` cookie. The database only keeps a SHA-256 hash of it, so a database leak doesn't expose live sessions.
+  - Every project query is filtered by the logged-in user, so nobody can read or edit someone else's project, even by guessing its id.
+  - Write requests must be JSON, which blocks cross-site form attacks (CSRF).
+  - A wrong email and a wrong password take the same time and give the same message, so attackers can't tell which emails have accounts.
+
+| Method | Endpoint | What it does |
+| --- | --- | --- |
+| `POST` | `/api/auth/signup` | Create an account and log in |
+| `POST` | `/api/auth/login` | Log in |
+| `POST` | `/api/auth/logout` | Log out |
+| `GET` | `/api/auth/me` | Who is logged in |
+| `GET` | `/api/projects` | List your projects |
+| `POST` | `/api/projects` | Save a new project |
+| `GET` | `/api/projects/:id` | Open a project |
+| `PUT` | `/api/projects/:id` | Update a project |
+| `DELETE` | `/api/projects/:id` | Delete a project |
+
+**Tests.** 42 tests run on every push with GitHub Actions. The API tests start the real endpoints and run them against a real Postgres (PGlite, Postgres compiled to WebAssembly), covering sign-up, login, sessions, and making sure one user can't touch another user's projects.
 
 ## Run it yourself
 
 ```sh
 git clone https://github.com/Lahanas/PaintWise.git
 cd PaintWise
-npx serve .     # then open the link it prints
-npm test        # run the tests
+npm install
+npm run dev     # http://localhost:3000, with a local database, no setup needed
+npm test        # run all the tests
 ```
+
+To deploy your own copy: import the repo on [Vercel](https://vercel.com), add a Postgres database from **Storage → Neon** and connect it to the project, then redeploy. The tables are created on the first request.
 
 ## What's next
 
@@ -64,7 +99,9 @@ npm test        # run the tests
 - [x] v0.3: color preview on a photo of your wall
 - [x] v0.4: paint prices and a printable quote for clients
 - [x] v0.5: live camera preview, and save and share projects
-- [ ] Next: measure a wall from a photo, and color palettes from real paint brands
+- [x] v0.6: backend with accounts and projects saved in the cloud
+- [ ] Next: password reset by email, TypeScript, and end-to-end browser tests
+- [ ] Later: measure a wall from a photo, and color palettes from real paint brands
 
 ## License
 

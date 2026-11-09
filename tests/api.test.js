@@ -2,6 +2,15 @@
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { createApp, pgliteDb } from '../scripts/dev.js';
+import { setMailer } from '../api/_lib/mail.js';
+
+// Emails are captured here instead of being sent.
+const outbox = [];
+setMailer(async (mail) => { outbox.push(mail); });
+const lastLinkTo = (email) => {
+  const mail = [...outbox].reverse().find((m) => m.to === email);
+  return mail && /#reset=([A-Za-z0-9_-]+)/.exec(mail.text)[1];
+};
 
 let server;
 let db;
@@ -47,7 +56,9 @@ const project = { system: 'metric', coats: 2, rooms: [{ name: 'Kitchen', length:
 
 test('sign up, stay logged in, log out', async () => {
   const call = client();
-  assert.deepEqual((await call('GET', '/api/auth/me')).body, { user: null });
+  const me = (await call('GET', '/api/auth/me')).body;
+  assert.equal(me.user, null);
+  assert.equal(me.features.passwordReset, true);
 
   const signup = await call('POST', '/api/auth/signup', { email: ' Anas@Example.com ', password: 'paint-it-green' });
   assert.equal(signup.status, 201);
@@ -185,4 +196,81 @@ test('too many failed logins from one IP address are blocked too', async () => {
     await call('POST', '/api/auth/login', { email: `nobody${i}@example.com`, password: 'whatever-xx' });
   }
   assert.equal((await call('POST', '/api/auth/login', { email: 'someone@example.com', password: 'whatever-xx' })).status, 429);
+});
+
+test('change password: needs the current one, then logs out other devices', async () => {
+  const laptop = client();
+  const phone = client();
+  await laptop('POST', '/api/auth/signup', { email: 'change@example.com', password: 'old-password' });
+  await phone('POST', '/api/auth/login', { email: 'change@example.com', password: 'old-password' });
+
+  const wrong = await laptop('POST', '/api/auth/password', { currentPassword: 'not-it-at-all', newPassword: 'new-password' });
+  assert.equal(wrong.status, 400);
+  const tooShort = await laptop('POST', '/api/auth/password', { currentPassword: 'old-password', newPassword: 'short' });
+  assert.equal(tooShort.status, 400);
+
+  assert.equal((await laptop('POST', '/api/auth/password', { currentPassword: 'old-password', newPassword: 'new-password' })).status, 200);
+  assert.equal((await laptop('GET', '/api/auth/me')).body.user.email, 'change@example.com', 'still logged in here');
+  assert.equal((await phone('GET', '/api/auth/me')).body.user, null, 'other device was logged out');
+  assert.equal((await client()('POST', '/api/auth/login', { email: 'change@example.com', password: 'old-password' })).status, 401);
+  assert.equal((await client()('POST', '/api/auth/login', { email: 'change@example.com', password: 'new-password' })).status, 200);
+});
+
+test('forgot password: same answer whether or not the account exists', async () => {
+  await client()('POST', '/api/auth/signup', { email: 'forgetful@example.com', password: 'longenough' });
+  const before = outbox.length;
+  const real = await client()('POST', '/api/auth/forgot', { email: 'forgetful@example.com' });
+  const fake = await client()('POST', '/api/auth/forgot', { email: 'ghost@example.com' });
+  assert.equal(real.status, 200);
+  assert.deepEqual(real.body, fake.body);
+  assert.equal(outbox.length, before + 1, 'only the real account gets an email');
+  assert.equal(outbox.at(-1).to, 'forgetful@example.com');
+});
+
+test('reset link: sets a new password, logs out everywhere, works only once', async () => {
+  const oldDevice = client();
+  await oldDevice('POST', '/api/auth/signup', { email: 'resetme@example.com', password: 'forgotten-one' });
+  await client()('POST', '/api/auth/forgot', { email: 'resetme@example.com' });
+  const token = lastLinkTo('resetme@example.com');
+  assert.ok(token);
+  const [stored] = await db.query("SELECT token_hash FROM password_resets pr JOIN users u ON u.id = pr.user_id WHERE u.email = 'resetme@example.com'");
+  assert.notEqual(stored.token_hash, token, 'only a hash of the link is stored');
+
+  const browser = client();
+  const done = await browser('POST', '/api/auth/reset', { token, password: 'brand-new-one' });
+  assert.equal(done.status, 200);
+  assert.equal((await browser('GET', '/api/auth/me')).body.user.email, 'resetme@example.com');
+  assert.equal((await oldDevice('GET', '/api/auth/me')).body.user, null);
+  assert.equal((await client()('POST', '/api/auth/login', { email: 'resetme@example.com', password: 'brand-new-one' })).status, 200);
+
+  const again = await client()('POST', '/api/auth/reset', { token, password: 'another-one-x' });
+  assert.equal(again.status, 400);
+});
+
+test('reset link: expired or made-up links are refused', async () => {
+  await client()('POST', '/api/auth/signup', { email: 'late@example.com', password: 'longenough' });
+  await client()('POST', '/api/auth/forgot', { email: 'late@example.com' });
+  const token = lastLinkTo('late@example.com');
+  await db.query("UPDATE password_resets SET expires_at = now() - interval '1 minute'");
+  assert.equal((await client()('POST', '/api/auth/reset', { token, password: 'too-late-now' })).status, 400);
+  assert.equal((await client()('POST', '/api/auth/reset', { token: 'made-up-token', password: 'longenough' })).status, 400);
+});
+
+test('forgot password: limited to 3 emails per hour per address', async () => {
+  await client()('POST', '/api/auth/signup', { email: 'spam@example.com', password: 'longenough' });
+  for (let i = 0; i < 3; i++) assert.equal((await client()('POST', '/api/auth/forgot', { email: 'spam@example.com' })).status, 200);
+  assert.equal((await client()('POST', '/api/auth/forgot', { email: 'spam@example.com' })).status, 429);
+});
+
+test('without email set up, the reset feature says so', async () => {
+  setMailer(null);
+  const saved = process.env.RESEND_API_KEY;
+  delete process.env.RESEND_API_KEY;
+  try {
+    assert.equal((await client()('GET', '/api/auth/me')).body.features.passwordReset, false);
+    assert.equal((await client()('POST', '/api/auth/forgot', { email: 'x@example.com' })).status, 503);
+  } finally {
+    if (saved) process.env.RESEND_API_KEY = saved;
+    setMailer(async (mail) => { outbox.push(mail); });
+  }
 });

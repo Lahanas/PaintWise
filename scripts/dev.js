@@ -10,6 +10,7 @@ import { readFile, stat } from 'node:fs/promises';
 import { extname, join, normalize, dirname } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { setDb } from '../api/_lib/db.js';
+import { setMailer } from '../api/_lib/mail.js';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -29,6 +30,9 @@ const ROUTES = [
   ['/api/auth/login', 'api/auth/login.js'],
   ['/api/auth/logout', 'api/auth/logout.js'],
   ['/api/auth/me', 'api/auth/me.js'],
+  ['/api/auth/password', 'api/auth/password.js'],
+  ['/api/auth/forgot', 'api/auth/forgot.js'],
+  ['/api/auth/reset', 'api/auth/reset.js'],
   ['/api/projects', 'api/projects/index.js'],
   [/^\/api\/projects\/([^/]+)$/, 'api/projects/[id].js', 'id'],
 ];
@@ -102,6 +106,11 @@ export async function pgliteDb(dataDir) {
 
 if (import.meta.url === pathToFileURL(process.argv[1]).href) {
   const port = Number(process.env.PORT) || 3000;
-  const db = await pgliteDb(join(ROOT, '.data'));
+  // DATA_DIR=memory starts with an empty database every time (used by the browser tests).
+  const db = await pgliteDb(process.env.DATA_DIR === 'memory' ? undefined : join(ROOT, process.env.DATA_DIR || '.data'));
+  // Locally, emails are printed here instead of being sent.
+  if (!process.env.RESEND_API_KEY) {
+    setMailer(async ({ to, subject, text }) => console.log(`\n--- email to ${to}: ${subject}\n${text}\n---\n`));
+  }
   createApp(db).listen(port, () => console.log(`PaintWise running at http://localhost:${port}`));
 }

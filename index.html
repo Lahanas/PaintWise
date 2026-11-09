@@ -15,7 +15,7 @@
       <a href="#estimate" class="tab" data-tab="estimate">Paint calculator</a>
       <a href="#preview" class="tab" data-tab="preview">Color preview</a>
       <div class="account" id="account" hidden>
-        <span id="account-in" hidden><span class="account-email" id="account-email"></span> <button type="button" class="link-btn" id="logout">Log out</button></span>
+        <span id="account-in" hidden><span class="account-email" id="account-email"></span> <button type="button" class="link-btn" id="open-change">Change password</button> <button type="button" class="link-btn" id="logout">Log out</button></span>
         <span id="account-out"><button type="button" class="link-btn" id="open-login">Log in</button> <button type="button" class="btn btn-small" id="open-signup">Sign up</button></span>
       </div>
     </nav>
@@ -207,10 +207,14 @@
   <dialog class="auth-dialog" id="auth-dialog" aria-labelledby="auth-title">
     <form id="auth-form" novalidate>
       <h2 id="auth-title">Log in</h2>
-      <label>Email<input id="auth-email" type="email" autocomplete="email" required /></label>
-      <label>Password<input id="auth-password" type="password" autocomplete="current-password" minlength="8" required /></label>
+      <p class="hint" id="auth-intro" hidden></p>
+      <label id="row-email">Email<input id="auth-email" type="email" autocomplete="email" required /></label>
+      <label id="row-current">Current password<input id="auth-current" type="password" autocomplete="current-password" /></label>
+      <label id="row-password"><span id="auth-password-label">Password</span><input id="auth-password" type="password" autocomplete="current-password" minlength="8" required /></label>
       <p class="hint" id="auth-password-hint" hidden>At least 8 characters.</p>
+      <button type="button" class="link-btn auth-forgot" id="auth-forgot" hidden>Forgot your password?</button>
       <p class="auth-error" id="auth-error" role="alert"></p>
+      <p class="auth-success" id="auth-success" role="status"></p>
       <div class="auth-actions">
         <button type="submit" class="btn" id="auth-submit">Log in</button>
         <button type="button" class="btn btn-secondary" id="auth-cancel">Cancel</button>

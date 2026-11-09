@@ -190,3 +190,7 @@ textarea { font: inherit; color: var(--text); background: var(--bg); border: 1px
 .auth-error { margin: 0; min-height: 1.25em; color: #b3261e; font-size: 0.875rem; }
 .auth-actions { display: flex; gap: 8px; }
 @media (max-width: 480px) { .tabs { flex-wrap: wrap; } .account { margin-left: 0; width: 100%; padding: 6px 0; } }
+.auth-success { margin: 0; color: var(--accent); font-size: 0.875rem; }
+.auth-success:empty { display: none; }
+.auth-forgot { justify-self: start; font-size: 0.875rem; margin-top: -4px; }
+#auth-intro { margin: -8px 0 0; }

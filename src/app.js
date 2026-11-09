@@ -579,33 +579,85 @@ function renderAccount() {
   $('#login-hint').hidden = !account.available || !!account.user;
 }
 
+// One dialog for every account screen. Each mode says which fields show and what Submit does.
+const AUTH_MODES = {
+  login: {
+    title: 'Log in', submit: 'Log in', fields: ['email', 'password'], passwordLabel: 'Password',
+    autocomplete: 'current-password', switchTo: 'signup', switchText: 'New here? Create an account',
+    run: async (f) => { const user = await api.login(f.email, f.password); return { user, status: `Welcome back, ${user.email}` }; },
+  },
+  signup: {
+    title: 'Create your account', submit: 'Create account', fields: ['email', 'password'], passwordLabel: 'Password',
+    autocomplete: 'new-password', hint: true, switchTo: 'login', switchText: 'Already have an account? Log in',
+    run: async (f) => { const user = await api.signup(f.email, f.password); return { user, status: 'Account created. Your projects will now be saved to it.' }; },
+  },
+  forgot: {
+    title: 'Reset your password', submit: 'Send me a reset link', fields: ['email'],
+    intro: "Enter your account's email and we'll send you a link to choose a new password.",
+    switchTo: 'login', switchText: 'Back to log in',
+    run: async (f) => ({ message: await api.forgotPassword(f.email) }),
+  },
+  reset: {
+    title: 'Choose a new password', submit: 'Save new password', fields: ['password'], passwordLabel: 'New password',
+    autocomplete: 'new-password', hint: true,
+    run: async (f, ctx) => { const user = await api.resetPassword(ctx.token, f.password); return { user, status: 'Password changed. You are logged in.' }; },
+  },
+  change: {
+    title: 'Change password', submit: 'Change password', fields: ['current', 'password'], passwordLabel: 'New password',
+    autocomplete: 'new-password', hint: true, intro: "You'll stay logged in here, and be logged out on your other devices.",
+    run: async (f) => { const user = await api.changePassword(f.current, f.password); return { user, status: 'Password changed.' }; },
+  },
+};
+
+let openAuth = () => {};
+
 function bindAccount() {
   const dialog = $('#auth-dialog');
   const form = $('#auth-form');
   const error = $('#auth-error');
+  const success = $('#auth-success');
   let mode = 'login';
+  const ctx = { token: '' };
 
   const setMode = (next) => {
     mode = next;
-    $('#auth-title').textContent = mode === 'login' ? 'Log in' : 'Create your account';
-    $('#auth-submit').textContent = mode === 'login' ? 'Log in' : 'Create account';
-    $('#auth-switch').textContent = mode === 'login' ? 'New here? Create an account' : 'Already have an account? Log in';
-    $('#auth-password').autocomplete = mode === 'login' ? 'current-password' : 'new-password';
-    $('#auth-password-hint').hidden = mode === 'login';
+    const m = AUTH_MODES[mode];
+    $('#auth-title').textContent = m.title;
+    $('#auth-submit').textContent = m.submit;
+    $('#auth-intro').textContent = m.intro || '';
+    $('#auth-intro').hidden = !m.intro;
+    ['email', 'current', 'password'].forEach((f) => { $(`#row-${f}`).hidden = !m.fields.includes(f); });
+    $('#auth-password-label').textContent = m.passwordLabel || 'Password';
+    $('#auth-password').autocomplete = m.autocomplete || 'current-password';
+    $('#auth-password-hint').hidden = !m.hint;
+    $('#auth-forgot').hidden = !(mode === 'login' && account.features && account.features.passwordReset);
+    $('#auth-switch').hidden = !m.switchTo;
+    $('#auth-switch').textContent = m.switchText || '';
+    $('#auth-submit').hidden = false;
     error.textContent = '';
+    success.textContent = '';
   };
 
-  const open = (next) => {
-    setMode(next);
+  openAuth = (next, options = {}) => {
     form.reset();
-    dialog.showModal();
-    $('#auth-email').focus();
+    ctx.token = options.token || '';
+    setMode(next);
+    if (!dialog.open) dialog.showModal();
+    const first = AUTH_MODES[next].fields[0];
+    $(`#auth-${first}`).focus();
   };
 
-  $('#open-login').addEventListener('click', () => open('login'));
-  $('#open-signup').addEventListener('click', () => open('signup'));
-  $('#login-hint-link').addEventListener('click', () => open('signup'));
-  $('#auth-switch').addEventListener('click', () => setMode(mode === 'login' ? 'signup' : 'login'));
+  $('#open-login').addEventListener('click', () => openAuth('login'));
+  $('#open-signup').addEventListener('click', () => openAuth('signup'));
+  $('#open-change').addEventListener('click', () => openAuth('change'));
+  $('#login-hint-link').addEventListener('click', () => openAuth('signup'));
+  $('#auth-forgot').addEventListener('click', () => {
+    const email = $('#auth-email').value;
+    setMode('forgot');
+    $('#auth-email').value = email;
+    $('#auth-email').focus();
+  });
+  $('#auth-switch').addEventListener('click', () => setMode(AUTH_MODES[mode].switchTo));
   $('#auth-cancel').addEventListener('click', () => dialog.close());
 
   form.addEventListener('submit', async (e) => {
@@ -613,13 +665,19 @@ function bindAccount() {
     const submit = $('#auth-submit');
     submit.disabled = true;
     error.textContent = '';
+    success.textContent = '';
     try {
-      const email = $('#auth-email').value;
-      const password = $('#auth-password').value;
-      const user = mode === 'login' ? await api.login(email, password) : await api.signup(email, password);
+      const fields = { email: $('#auth-email').value, current: $('#auth-current').value, password: $('#auth-password').value };
+      const result = await AUTH_MODES[mode].run(fields, ctx);
+      if (result.message) {
+        // Forgot password: keep the dialog open and show what happens next.
+        success.textContent = result.message;
+        submit.hidden = true;
+        return;
+      }
       dialog.close();
-      await setAccount(user);
-      showStatus(mode === 'login' ? `Welcome back, ${user.email}` : 'Account created. Your projects will now be saved to it.');
+      await setAccount(result.user);
+      showStatus(result.status);
     } catch (err) {
       error.textContent = err.message;
     } finally {
@@ -634,9 +692,18 @@ function bindAccount() {
   });
 }
 
+// Opening the link from a reset email: show the "choose a new password" screen.
+function openResetLink() {
+  const match = /^#reset=([A-Za-z0-9_-]+)$/.exec(location.hash);
+  if (!match) return;
+  history.replaceState(null, '', location.pathname + location.search);
+  openAuth('reset', { token: match[1] });
+}
+
 async function initAccount() {
   account = await api.getSession();
   await setAccount(account.user);
+  if (account.available) openResetLink();
 }
 
 // Opening a share link: load it as an unsaved copy, then clean the URL.
@@ -663,3 +730,9 @@ bindProjects();
 bindAccount();
 renderProjectList();
 initAccount().then(openSharedLink);
+
+// A reset or share link opened in a tab where PaintWise is already running.
+window.addEventListener('hashchange', () => {
+  if (account.available) openResetLink();
+  openSharedLink();
+});

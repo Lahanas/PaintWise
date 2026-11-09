@@ -31,16 +31,19 @@ async function call(method, path, payload) {
 export async function getSession() {
   try {
     const data = await call('GET', '/api/auth/me');
-    if (!data || !('user' in data)) return { available: false, user: null };
-    return { available: true, user: data.user };
+    if (!data || !('user' in data)) return { available: false, user: null, features: {} };
+    return { available: true, user: data.user, features: data.features || {} };
   } catch {
-    return { available: false, user: null };
+    return { available: false, user: null, features: {} };
   }
 }
 
 export const signup = (email, password) => call('POST', '/api/auth/signup', { email, password }).then((d) => d.user);
 export const login = (email, password) => call('POST', '/api/auth/login', { email, password }).then((d) => d.user);
 export const logout = () => call('POST', '/api/auth/logout', {});
+export const changePassword = (currentPassword, newPassword) => call('POST', '/api/auth/password', { currentPassword, newPassword }).then((d) => d.user);
+export const forgotPassword = (email) => call('POST', '/api/auth/forgot', { email }).then((d) => d.message);
+export const resetPassword = (token, password) => call('POST', '/api/auth/reset', { token, password }).then((d) => d.user);
 
 export const listProjects = () => call('GET', '/api/projects').then((d) => d.projects);
 export const getProject = (id) => call('GET', `/api/projects/${encodeURIComponent(id)}`).then((d) => d.project);

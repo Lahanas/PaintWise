@@ -50,6 +50,9 @@ Point your phone's **live camera** at a wall (or take or upload a photo), tap th
 <img src="docs/color-preview.png" alt="The same room before and after the wall is recolored sage green, with the shading kept" width="860">
 </div>
 
+### 📏 Measure a wall from a photo (beta)
+Take a photo of a wall and PaintWise works out its size. A small **machine learning model**, trained for this project, finds the wall, the doors and the windows in the photo, right on your phone. Then a door (standard height) or the ceiling height you type in serves as a ruler. One tap adds the wall to your estimate.
+
 ### ☁️ Accounts, cloud projects and share links
 - Create a free account and your projects are **saved online**: measure on your phone at the job site, finish the quote on your laptop.
 - No account? Everything still works, and projects are saved on your device.
@@ -68,6 +71,7 @@ Point your phone's **live camera** at a wall (or take or upload a photo), tap th
 flowchart LR
     subgraph Browser["Browser · HTML, CSS, JavaScript"]
         A["Paint math<br/>Color preview<br/>Quotes"]
+        M["Wall model<br/>(ONNX Runtime)"]
     end
     subgraph Vercel["Vercel Functions · Node.js"]
         B["/api/auth/*<br/>sign up, log in, reset password"]
@@ -90,6 +94,7 @@ flowchart LR
 | Backend | Vercel Functions (Node.js) | Each file in `api/` is one endpoint. No server to look after, and it scales to zero |
 | Database | Postgres on Neon | Real relational data (users own projects), with each project stored as `jsonb` so the app can grow without migrations |
 | Email | Resend | Simple HTTP API for password reset emails |
+| Machine learning | SegFormer-B0 trained in PyTorch on ADE20K, run in the browser with ONNX Runtime Web | A small (4 MB) model that runs on the phone, so photos are never uploaded |
 | Quality | Node test runner, Playwright, TypeScript type checking, GitHub Actions | Every push is tested automatically before it goes live |
 
 **The logic is kept separate from the page.** The paint math ([`src/estimator.js`](src/estimator.js)), the wall recoloring ([`src/recolor.js`](src/recolor.js)) and project sharing ([`src/projects.js`](src/projects.js)) don't touch the browser, so they're easy to test on their own.
@@ -127,6 +132,17 @@ When you tap the wall, a **flood fill** spreads out from that point and selects 
 </details>
 
 <details>
+<summary><b>Measuring a wall from a photo with a segmentation model</b></summary>
+<br>
+
+- **The model:** SegFormer-B0, a small segmentation transformer (3.7M parameters), trained in PyTorch on a Colab GPU to label every pixel as wall, door, window or other. The training data is [ADE20K](https://groups.csail.mit.edu/vision/datasets/ADE20K/): 9,468 photos that show walls, with its 150 classes merged into our 4. The whole training notebook is in [`training/`](training).
+- **First results**, on 958 validation photos it never saw (intersection over union): **wall 0.68, window 0.53, door 0.27**. Doors are the weak spot, so the next training run starts from a model that already knows ADE20K's doors. The full numbers are in [`training/metrics-run1.json`](training/metrics-run1.json).
+- **In the browser:** the model is exported to ONNX and quantized to 8-bit (15 MB → 4 MB), then runs with ONNX Runtime Web (WebAssembly), in about half a second on a laptop. The photo never leaves the phone.
+- **From pixels to metres:** the app finds the wall you tapped, takes its height column by column (the median, so a sofa in front doesn't shrink it), and converts pixels to metres using the tallest door (2.03 m) or the ceiling height. See [`src/measure.js`](src/measure.js).
+- **Limits:** the photo should be taken roughly straight on, and accuracy against a tape measure is still being measured on real walls ([how](training/README.md)).
+</details>
+
+<details>
 <summary><b>Sharing a whole project in a link, with no database</b></summary>
 <br>
 
@@ -139,8 +155,8 @@ Every push runs three checks on GitHub Actions:
 
 | Check | What it covers |
 | --- | --- |
-| **51 unit and API tests** (`npm test`) | The paint math, can picking, recoloring and share links, plus every API endpoint, run against a **real Postgres** (PGlite, Postgres compiled to WebAssembly): sign-up, login, sessions, rate limits, password reset, and making sure one user can't touch another user's projects |
-| **Browser tests** (`npm run test:e2e`) | [Playwright](https://playwright.dev) opens the app in a real Chrome, on a **desktop and a phone** screen, and clicks through it like a user: measuring a room, painting a wall on a photo, signing up, saving a project, sharing a link, and resetting a forgotten password using the link from the email |
+| **63 unit and API tests** (`npm test`) | The paint math, can picking, recoloring, wall measuring and share links, plus every API endpoint, run against a **real Postgres** (PGlite, Postgres compiled to WebAssembly): sign-up, login, sessions, rate limits, password reset, and making sure one user can't touch another user's projects |
+| **Browser tests** (`npm run test:e2e`) | [Playwright](https://playwright.dev) opens the app in a real Chrome, on a **desktop and a phone** screen, and clicks through it like a user: measuring a room, painting a wall on a photo, measuring a wall with the trained model, signing up, saving a project, sharing a link, and resetting a forgotten password using the link from the email |
 | **Type checking** (`npm run typecheck`) | The code stays plain JavaScript, but TypeScript checks the logic and the backend for mistakes like a missing value or a wrong argument |
 
 ## 📡 API
@@ -199,8 +215,9 @@ Without the email key, the app works the same, just without the "Forgot your pas
 - [x] **v0.5** Live camera preview, save and share projects
 - [x] **v0.6** Backend with accounts and projects saved in the cloud
 - [x] **v0.7** Password reset by email, login rate limits, type checking, browser tests
-- [ ] **Next** Install it on your phone like an app, and use it offline at the job site
-- [ ] **Later** Measure a wall from a photo, and color palettes from real paint brands
+- [x] **v0.8** Measure a wall from a photo with a machine learning model (beta)
+- [ ] **Next** Better door detection, and accuracy checked against a tape measure on real walls
+- [ ] **Later** Install it on your phone like an app and use it offline, and color palettes from real paint brands
 
 ## 👋 About me
 

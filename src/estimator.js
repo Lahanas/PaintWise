@@ -68,13 +68,19 @@ export function roomPaintableArea(room, system) {
 }
 
 /**
- * Pick the cheapest-in-volume set of cans that covers `needed`.
- * Minimises leftover paint first, then the number of cans.
- * Works on a grid of the smallest can size so it stays exact.
+ * Pick the set of cans to buy for `needed`.
+ * Without prices: least leftover paint first, then fewest cans.
+ * With a price for every can size: cheapest total first, then least leftover
+ * (a big bucket is often cheaper than several small tins, even with paint left over).
+ * Works on a grid of the can sizes' common step so it stays exact.
+ * @param {number} needed
+ * @param {number[]} sizes
+ * @param {Object<string, number>} [prices] price per can, keyed by size
  */
-export function pickCans(needed, sizes) {
+export function pickCans(needed, sizes, prices) {
   if (needed <= 0) return { cans: [], total: 0 };
   const sorted = [...sizes].sort((a, b) => b - a);
+  const priced = hasAllPrices(sorted, prices);
   // Grid step = greatest common divisor of the can sizes (to 0.01 precision).
   const gcd = (a, b) => (b ? gcd(b, a % b) : a);
   const scaled = sorted.map((s) => Math.round(s * 100));
@@ -82,20 +88,28 @@ export function pickCans(needed, sizes) {
   const units = scaled.map((s) => Math.round(s / (step * 100)));
   const target = Math.ceil(needed / step - 1e-9);
   const limit = target + Math.max(...units);
-  // best[i] = fewest cans to make exactly i units
+  // weight of one can: its price, or 1 (= count cans) when there are no prices
+  const weight = sorted.map((size) => (priced ? Number(prices[size]) : 1));
+
+  // best[i] = lowest weight to make exactly i units
   const best = new Array(limit + 1).fill(Infinity);
   const choice = new Array(limit + 1).fill(-1);
   best[0] = 0;
   for (let i = 1; i <= limit; i++) {
     units.forEach((u, idx) => {
-      if (u <= i && best[i - u] + 1 < best[i]) {
-        best[i] = best[i - u] + 1;
+      if (u <= i && best[i - u] + weight[idx] < best[i] - 1e-9) {
+        best[i] = best[i - u] + weight[idx];
         choice[i] = idx;
       }
     });
   }
-  let amount = target;
-  while (amount <= limit && best[amount] === Infinity) amount++;
+
+  let amount = -1;
+  for (let i = target; i <= limit; i++) {
+    if (best[i] === Infinity) continue;
+    if (amount < 0) { amount = i; if (!priced) break; continue; }
+    if (best[i] < best[amount] - 1e-9) amount = i; // strictly cheaper wins; ties keep less leftover
+  }
   const counts = new Map();
   for (let i = amount; i > 0; i -= units[choice[i]]) {
     const size = sorted[choice[i]];
@@ -105,6 +119,27 @@ export function pickCans(needed, sizes) {
     .sort((a, b) => b[0] - a[0])
     .map(([size, count]) => ({ size, count }));
   return { cans, total: amount * step };
+}
+
+function hasAllPrices(sizes, prices) {
+  return !!prices && sizes.every((size) => Number(prices[size]) > 0);
+}
+
+/**
+ * Cost of a list of cans. Sizes without a price are listed with price null.
+ * @returns {{lines: Array<{size:number,count:number,price:number|null,total:number}>, total: number, complete: boolean}}
+ */
+export function costOf(cans, prices = {}) {
+  let total = 0;
+  let complete = true;
+  const lines = cans.map(({ size, count }) => {
+    const price = Number(prices[size]) > 0 ? Number(prices[size]) : null;
+    if (price === null) complete = false;
+    const lineTotal = price === null ? 0 : price * count;
+    total += lineTotal;
+    return { size, count, price, total: lineTotal };
+  });
+  return { lines, total, complete };
 }
 
 /**
@@ -118,6 +153,10 @@ export function pickCans(needed, sizes) {
  * @param {'smooth'|'textured'|'rough'} [input.surface]
  * @param {boolean} [input.primer] add one coat of primer
  * @param {number} [input.primerCoverage] area per volume unit for the primer
+ * @param {Object<string, number>} [input.paintPrices] price per can of paint, keyed by can size
+ * @param {Object<string, number>} [input.primerPrices] price per can of primer, keyed by can size
+ * @param {number} [input.labourRate] price per area unit of wall painted (all coats included)
+ * @param {number} [input.taxPercent] tax added to the subtotal
  */
 export function estimate({
   system = 'metric',
@@ -128,6 +167,10 @@ export function estimate({
   surface = 'smooth',
   primer = false,
   primerCoverage,
+  paintPrices = {},
+  primerPrices = {},
+  labourRate = 0,
+  taxPercent = 0,
 }) {
   const cfg = UNIT_SYSTEMS[system];
   const cov = num(coverage) || cfg.defaultCoverage;
@@ -145,14 +188,30 @@ export function estimate({
   const area = perRoom.reduce((s, r) => s + r.total, 0);
   const basePaint = (area * nCoats * surfaceFactor) / cov;
   const paint = basePaint * margin;
-  const purchase = pickCans(paint, cfg.cans);
+  const purchase = pickCans(paint, cfg.cans, paintPrices);
 
   let primerResult = null;
   if (primer) {
     const pCov = num(primerCoverage) || cfg.primerCoverage;
     const amount = ((area * surfaceFactor) / pCov) * margin;
-    primerResult = { coverage: pCov, paint: amount, purchase: pickCans(amount, cfg.cans) };
+    primerResult = { coverage: pCov, paint: amount, purchase: pickCans(amount, cfg.cans, primerPrices) };
   }
+
+  // Money: only when the user entered some prices or a labour rate.
+  const paintCost = costOf(purchase.cans, paintPrices);
+  const primerCost = primerResult ? costOf(primerResult.purchase.cans, primerPrices) : null;
+  const labour = area * (Number(labourRate) > 0 ? Number(labourRate) : 0);
+  const subtotal = paintCost.total + (primerCost ? primerCost.total : 0) + labour;
+  const tax = subtotal * Math.max(0, Number(taxPercent) || 0) / 100;
+  const cost = {
+    paint: paintCost,
+    primer: primerCost,
+    labour,
+    subtotal,
+    tax,
+    total: subtotal + tax,
+    hasAny: subtotal > 0,
+  };
 
   return {
     system,
@@ -168,5 +227,6 @@ export function estimate({
     paint,
     purchase,
     primer: primerResult,
+    cost,
   };
 }

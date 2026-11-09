@@ -55,6 +55,38 @@
       <div id="rooms"></div>
     </section>
 
+    <section class="panel pricing" id="pricing" aria-labelledby="pricing-title">
+      <h2 id="pricing-title">Prices and quote <span class="optional">optional</span></h2>
+      <p class="hint pricing-intro">Add what each can costs at your store to see the total, and the cheapest mix of cans. Contractors can add labour and print a quote for the client.</p>
+      <div class="grid">
+        <label>Currency
+          <input id="currency" type="text" maxlength="4" value="$" />
+        </label>
+        <label><span>Labour <span class="unit" id="labour-unit">per m²</span></span>
+          <input id="labour-rate" type="number" min="0" step="0.5" placeholder="0" />
+        </label>
+        <label><span>Tax <span class="unit">%</span></span>
+          <input id="tax" type="number" min="0" max="50" step="0.5" placeholder="0" />
+        </label>
+      </div>
+      <h3>Paint price per can</h3>
+      <div class="grid price-grid" id="paint-prices"></div>
+      <div class="primer-prices">
+        <h3>Primer price per can</h3>
+        <div class="grid price-grid" id="primer-prices"></div>
+      </div>
+      <details class="quote-details">
+        <summary>Quote details for your client</summary>
+        <div class="grid">
+          <label class="wide">Your name or business<input id="q-business" type="text" autocomplete="organization" /></label>
+          <label class="wide">Client name<input id="q-client" type="text" /></label>
+          <label class="wide">Job address<input id="q-address" type="text" autocomplete="street-address" /></label>
+          <label class="full">Notes<textarea id="q-notes" rows="3" placeholder="Prep work, colors, timeline, payment terms…"></textarea></label>
+        </div>
+      </details>
+      <button type="button" class="btn" id="print-quote">Print or save quote as PDF</button>
+    </section>
+
     <section class="panel result" aria-live="polite" aria-labelledby="result-title">
       <h2 id="result-title">Estimate</h2>
       <div id="result"></div>
@@ -144,6 +176,8 @@
       <button type="button" class="remove-wall" aria-label="Remove wall">×</button>
     </li>
   </template>
+
+  <section class="quote" id="quote" aria-hidden="true"></section>
 
   <footer class="site-footer">
     <p>Estimates only. Always check the coverage on your paint can and buy a little extra for touch-ups.</p>

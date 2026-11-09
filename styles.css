@@ -35,15 +35,16 @@ body {
   max-width: 1100px; margin: 0 auto; padding: 16px;
   display: grid; gap: 16px;
   grid-template-columns: minmax(0, 1fr) minmax(0, 380px);
-  grid-template-areas: "settings result" "rooms result";
+  grid-template-areas: "settings result" "rooms result" "pricing result";
   align-items: start;
 }
 .layout > :nth-child(1) { grid-area: settings; }
 .layout > :nth-child(2) { grid-area: rooms; }
-.layout > :nth-child(3) { grid-area: result; position: sticky; top: 16px; }
+.layout > .pricing { grid-area: pricing; }
+.layout > .result { grid-area: result; position: sticky; top: 16px; }
 @media (max-width: 800px) {
-  .layout { grid-template-columns: 1fr; grid-template-areas: "settings" "rooms" "result"; }
-  .layout > :nth-child(3) { position: static; }
+  .layout { grid-template-columns: 1fr; grid-template-areas: "settings" "rooms" "result" "pricing"; }
+  .layout > .result { position: static; }
 }
 .panel { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; }
 .panel h2 { margin: 0 0 12px; font-size: 1.125rem; }
@@ -120,3 +121,40 @@ input[type="range"] { padding: 0; accent-color: var(--accent); }
 .tool-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
 [hidden] { display: none !important; }
 #hold-original { user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; touch-action: none; }
+
+/* Prices and quote */
+.optional { font-size: 0.75rem; font-weight: 400; color: var(--muted); margin-left: 6px; }
+.pricing-intro { margin: 0 0 12px; }
+.pricing h3 { margin: 16px 0 8px; font-size: 0.9375rem; }
+.price-grid { grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); }
+.pricing:not(.with-primer) .primer-prices { display: none; }
+.quote-details { margin: 16px 0; }
+label.full { grid-column: 1 / -1; }
+textarea { font: inherit; color: var(--text); background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 8px; width: 100%; resize: vertical; }
+.cost-table td:last-child, .cost-table th:last-child { text-align: right; }
+.cost-table .total td { font-weight: 700; border-bottom: 0; font-size: 1rem; }
+.cost-table .muted td { color: var(--muted); }
+.price-tag { color: var(--muted); font-size: 0.875rem; }
+
+/* Printable quote: hidden on screen, the only thing printed */
+.quote { display: none; }
+@media print {
+  @page { margin: 16mm; }
+  body { background: #fff; color: #111; }
+  body > *:not(.quote) { display: none !important; }
+  .quote { display: block; font-size: 11pt; line-height: 1.45; color: #111; }
+  .quote h1 { font-size: 20pt; margin: 0; }
+  .quote h2 { font-size: 12pt; margin: 18pt 0 6pt; }
+  .quote .q-head { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #2f6f5e; padding-bottom: 10pt; }
+  .quote .q-meta { text-align: right; color: #444; }
+  .quote .q-parties { display: flex; gap: 32pt; margin-top: 12pt; }
+  .quote .q-parties div { flex: 1; }
+  .quote .q-label { color: #666; font-size: 9pt; text-transform: uppercase; letter-spacing: 0.04em; }
+  .quote table { width: 100%; border-collapse: collapse; }
+  .quote th, .quote td { border-bottom: 1px solid #ddd; padding: 5pt 4pt; text-align: left; }
+  .quote th:not(:first-child), .quote td:not(:first-child) { text-align: right; }
+  .quote .q-totals { width: 50%; margin-left: auto; margin-top: 10pt; }
+  .quote .q-totals .total td { font-weight: 700; font-size: 13pt; border-top: 2px solid #111; border-bottom: 0; }
+  .quote .q-notes { white-space: pre-wrap; }
+  .quote .q-foot { margin-top: 24pt; color: #666; font-size: 9pt; }
+}

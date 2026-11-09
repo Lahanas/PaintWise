@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test';
 test('paints a wall on an uploaded photo', async ({ page }) => {
   await page.goto('/#preview');
   await expect(page.locator('#tab-preview')).toBeVisible();
-  await page.locator('#photo-upload').setInputFiles('docs/screenshot.png');
+  await page.locator('#photo-upload').setInputFiles('e2e/fixtures/room.jpg');
   await expect(page.locator('#stage-empty')).toBeHidden();
 
   const canvas = page.locator('#preview-canvas');

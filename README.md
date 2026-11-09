@@ -4,7 +4,7 @@
 
 You enter your rooms, and it tells you how many litres (or gallons) of paint to buy, and which cans to pick up at the store. Then you can snap a photo of your wall with your phone and see it in a new color before you buy a single can. It's made for painting contractors writing up a job and for homeowners doing it themselves.
 
-**Try it:** [lahanas.github.io/PaintWise](https://lahanas.github.io/PaintWise)
+**Try it:** [paintwise-ten.vercel.app](https://paintwise-ten.vercel.app)
 
 ![PaintWise screenshot](docs/screenshot.png)
 

@@ -1,4 +1,5 @@
 import { estimate, UNIT_SYSTEMS, SURFACES } from './estimator.js';
+import { encodeProject, decodeProject, listProjects, saveProject, deleteProject } from './projects.js';
 
 const STORAGE_KEY = 'wpe:v1';
 const FT_PER_M = 3.28084;
@@ -21,13 +22,16 @@ const defaultState = () => ({
   rooms: [{ name: 'Living room', length: 5, width: 4, height: 2.5, doors: 1, windows: 2, includeCeiling: false }],
 });
 
+// Fill in anything missing (older saves, shared links) with defaults.
+function normalize(saved) {
+  const base = defaultState();
+  return { ...base, ...saved, prices: { ...base.prices, ...saved.prices }, quote: { ...base.quote, ...saved.quote } };
+}
+
 function load() {
   try {
     const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
-    if (saved && Array.isArray(saved.rooms)) {
-      const base = defaultState();
-      return { ...base, ...saved, prices: { ...base.prices, ...saved.prices }, quote: { ...base.quote, ...saved.quote } };
-    }
+    if (saved && Array.isArray(saved.rooms)) return normalize(saved);
   } catch { /* storage unavailable */ }
   return defaultState();
 }
@@ -271,16 +275,31 @@ function update() {
   renderResult();
 }
 
+function fillSettings() {
+  $('#system').value = state.system;
+  $('#coats').value = state.coats;
+  $('#coverage').value = state.coverage;
+  $('#waste').value = state.wastePercent;
+  $('#surface').value = state.surface;
+  $('#primer').checked = !!state.primer;
+  $('#primer-coverage').value = state.primerCoverage;
+  $('#surface').closest('.panel').classList.toggle('with-primer', !!state.primer);
+}
+
+// Replace the whole job (opening a saved project or a shared link) and refresh every input.
+function setState(next) {
+  state = normalize(next);
+  fillSettings();
+  fillPricing();
+  renderRooms();
+  update();
+}
+
 function bindSettings() {
   const system = $('#system');
   const coats = $('#coats');
   const coverage = $('#coverage');
   const waste = $('#waste');
-  system.value = state.system;
-  coats.value = state.coats;
-  coverage.value = state.coverage;
-  waste.value = state.wastePercent;
-
   const surface = $('#surface');
   const primer = $('#primer');
   const primerCoverage = $('#primer-coverage');
@@ -288,10 +307,7 @@ function bindSettings() {
   surface.innerHTML = Object.entries(SURFACES)
     .map(([key, s]) => `<option value="${key}">${s.label}</option>`)
     .join('');
-  surface.value = state.surface;
-  primer.checked = !!state.primer;
-  primerCoverage.value = state.primerCoverage;
-  settingsPanel.classList.toggle('with-primer', !!state.primer);
+  fillSettings();
   surface.addEventListener('change', () => { state.surface = surface.value; update(); });
   primer.addEventListener('change', () => {
     state.primer = primer.checked;
@@ -387,7 +403,109 @@ function bindPricing() {
   fillPricing();
 }
 
+// ---------- saved projects and share links ----------
+let statusTimer;
+function showStatus(text) {
+  const el = $('#project-status');
+  el.textContent = text;
+  clearTimeout(statusTimer);
+  statusTimer = setTimeout(() => { el.textContent = ''; }, 4000);
+}
+
+function formatDate(ms) {
+  return new Date(ms).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+}
+
+function renderProjectList() {
+  const projects = listProjects();
+  const select = $('#project-list');
+  select.innerHTML = '<option value="">My projects…</option>' +
+    projects.map((p) => `<option value="${p.id}">${escapeHtml(p.name)} · ${formatDate(p.updated)}</option>`).join('');
+  select.value = projects.some((p) => p.id === state.projectId) ? state.projectId : '';
+  $('#project-open').hidden = projects.length === 0;
+  $('#delete-project').disabled = !state.projectId;
+}
+
+function bindProjects() {
+  const name = $('#project-name');
+  name.value = state.projectName || '';
+  name.addEventListener('input', () => { state.projectName = name.value; save(); });
+
+  $('#save-project').addEventListener('click', () => {
+    const entry = saveProject(state.projectName, { ...state, projectId: undefined }, state.projectId);
+    state.projectId = entry.id;
+    state.projectName = entry.name;
+    name.value = entry.name;
+    save();
+    renderProjectList();
+    showStatus(`Saved “${entry.name}”`);
+  });
+
+  $('#new-project').addEventListener('click', () => {
+    setState({ ...defaultState(), system: state.system, currency: state.currency, prices: state.prices, quote: { ...defaultState().quote, business: state.quote.business }, rooms: [{ name: 'Room 1', length: '', width: '', height: '', doors: 1, windows: 1 }] });
+    name.value = '';
+    renderProjectList();
+    showStatus('New project started. Your prices were kept.');
+  });
+
+  $('#project-list').addEventListener('change', (e) => {
+    const p = listProjects().find((x) => x.id === e.target.value);
+    if (!p) return;
+    setState({ ...p.state, projectId: p.id, projectName: p.name });
+    name.value = p.name;
+    renderProjectList();
+    showStatus(`Opened “${p.name}”`);
+  });
+
+  $('#delete-project').addEventListener('click', () => {
+    const p = listProjects().find((x) => x.id === state.projectId);
+    if (!p || !confirm(`Delete “${p.name}”? This can't be undone.`)) return;
+    deleteProject(p.id);
+    state.projectId = undefined;
+    save();
+    renderProjectList();
+    showStatus(`Deleted “${p.name}”`);
+  });
+
+  $('#share-project').addEventListener('click', async () => {
+    const { projectId, ...shared } = state;
+    const url = `${location.origin}${location.pathname}#p=${await encodeProject(shared)}`;
+    const title = state.projectName || 'PaintWise project';
+    try {
+      if (navigator.share && matchMedia('(pointer: coarse)').matches) {
+        await navigator.share({ title, url });
+        return;
+      }
+      await navigator.clipboard.writeText(url);
+      showStatus('Link copied. Anyone with it can open a copy of this project.');
+    } catch (err) {
+      if (err && err.name === 'AbortError') return; // closed the share sheet
+      prompt('Copy this link:', url);
+    }
+  });
+
+  renderProjectList();
+}
+
+// Opening a share link: load it as an unsaved copy, then clean the URL.
+async function openSharedLink() {
+  const match = /^#p=(.+)$/.exec(location.hash);
+  if (!match) return;
+  history.replaceState(null, '', location.pathname + location.search);
+  const project = await decodeProject(match[1]);
+  if (!project) {
+    showStatus('That link looks broken, so your current project was kept.');
+    return;
+  }
+  setState({ ...project, projectId: undefined });
+  $('#project-name').value = state.projectName || '';
+  renderProjectList();
+  $('#shared-banner').hidden = false;
+}
+
 bindSettings();
 bindPricing();
 renderRooms();
 update();
+bindProjects();
+openSharedLink();

@@ -35,15 +35,16 @@ body {
   max-width: 1100px; margin: 0 auto; padding: 16px;
   display: grid; gap: 16px;
   grid-template-columns: minmax(0, 1fr) minmax(0, 380px);
-  grid-template-areas: "settings result" "rooms result" "pricing result";
+  grid-template-areas: "project project" "settings result" "rooms result" "pricing result";
   align-items: start;
 }
-.layout > :nth-child(1) { grid-area: settings; }
-.layout > :nth-child(2) { grid-area: rooms; }
+.layout > .project-bar { grid-area: project; }
+.layout > :nth-child(2) { grid-area: settings; }
+.layout > :nth-child(3) { grid-area: rooms; }
 .layout > .pricing { grid-area: pricing; }
 .layout > .result { grid-area: result; position: sticky; top: 16px; }
 @media (max-width: 800px) {
-  .layout { grid-template-columns: 1fr; grid-template-areas: "settings" "rooms" "result" "pricing"; }
+  .layout { grid-template-columns: 1fr; grid-template-areas: "project" "settings" "rooms" "result" "pricing"; }
   .layout > .result { position: static; }
 }
 .panel { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; }
@@ -158,3 +159,11 @@ textarea { font: inherit; color: var(--text); background: var(--bg); border: 1px
   .quote .q-notes { white-space: pre-wrap; }
   .quote .q-foot { margin-top: 24pt; color: #666; font-size: 9pt; }
 }
+
+/* Projects */
+.project-bar { display: grid; gap: 8px; }
+.project-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.project-name { flex: 1 1 220px; font-weight: 600; background: var(--panel); }
+.project-row select { flex: 1 1 220px; width: auto; background: var(--panel); }
+.project-status { margin: 0; min-height: 1.25em; font-size: 0.875rem; color: var(--accent); }
+.shared-banner { margin: 0; padding: 10px 12px; border-radius: 8px; background: var(--accent-soft); color: var(--text); font-size: 0.875rem; }

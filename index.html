@@ -18,6 +18,21 @@
   </header>
 
   <main class="layout" id="tab-estimate">
+    <section class="project-bar" aria-label="Project">
+      <p class="shared-banner" id="shared-banner" hidden>You opened a shared project. It's a copy: save it to keep it on this device.</p>
+      <div class="project-row">
+        <input id="project-name" class="project-name" type="text" placeholder="Project name, e.g. Mom's living room" aria-label="Project name" />
+        <button type="button" class="btn" id="save-project">Save</button>
+        <button type="button" class="btn btn-secondary" id="share-project">Share link</button>
+        <button type="button" class="btn btn-secondary" id="new-project">New</button>
+      </div>
+      <div class="project-row" id="project-open" hidden>
+        <select id="project-list" aria-label="Open a saved project"></select>
+        <button type="button" class="btn btn-secondary" id="delete-project">Delete</button>
+      </div>
+      <p class="project-status" id="project-status" role="status" aria-live="polite"></p>
+    </section>
+
     <section class="panel" aria-labelledby="settings-title">
       <h2 id="settings-title">Job settings</h2>
       <div class="grid">

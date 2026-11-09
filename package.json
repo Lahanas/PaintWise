@@ -1,6 +1,6 @@
 {
   "name": "wall-paint-estimator",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "description": "Estimate how much paint you need for your walls.",
   "type": "module",
   "private": true,

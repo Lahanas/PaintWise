@@ -8,3 +8,4 @@ e2e/
 playwright.config.js
 test-results/
 playwright-report/
+training/

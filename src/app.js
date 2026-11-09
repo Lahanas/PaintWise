@@ -83,6 +83,7 @@ function renderRooms() {
     node.querySelectorAll('[data-field]').forEach((input) => {
       const key = input.dataset.field;
       if (input.type === 'checkbox') input.checked = !!room[key];
+      else if (input.tagName === 'SELECT') input.value = room[key] || input.options[0].value;
       else input.value = room[key] ?? '';
       input.addEventListener('input', () => {
         room[key] = input.type === 'checkbox' ? input.checked : input.type === 'number' ? (input.value === '' ? '' : Number(input.value)) : input.value;

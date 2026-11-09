@@ -155,6 +155,22 @@
             <button type="button" class="btn btn-secondary" id="hold-original" disabled>Hold to compare</button>
             <button type="button" class="btn" id="save-image" disabled>Save image</button>
           </div>
+
+          <section class="measure" id="measure" aria-labelledby="measure-title" hidden>
+            <h3 id="measure-title">Measure this wall <span class="optional">beta</span></h3>
+            <p class="hint">Stand back so the whole wall fits in the photo and hold the phone straight. Tap the wall first if there's more than one.</p>
+            <label>Use as a ruler
+              <select id="measure-ref">
+                <option value="door">A door in the photo</option>
+                <option value="ceiling">The ceiling height</option>
+              </select>
+            </label>
+            <label class="measure-known"><span id="measure-known-label">Door height</span>
+              <input id="measure-known" type="number" min="0.5" step="0.01" />
+            </label>
+            <button type="button" class="btn" id="measure-run" disabled>Measure wall</button>
+            <div class="measure-result" id="measure-result" aria-live="polite"></div>
+          </section>
         </div>
       </div>
     </section>

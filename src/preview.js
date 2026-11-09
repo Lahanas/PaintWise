@@ -1,4 +1,6 @@
 import { floodSelect, recolor } from './recolor.js';
+import { measureWall, resizeLabels, STANDARD_DOOR_HEIGHT, CLASSES } from './measure.js';
+import { modelAvailable, segment } from './segment.js';
 
 const $ = (sel) => document.querySelector(sel);
 const MAX_SIDE = 1200; // downscale big phone photos so tapping stays fast
@@ -82,6 +84,7 @@ async function loadPhoto(file) {
   const source = bitmap || (await loadViaImg(file));
   original = drawSource(source, MAX_SIDE);
   taps = [];
+  clearMeasurement();
   showCanvas();
   setStatus('');
   render();
@@ -118,6 +121,7 @@ function paint(img) {
     recolor(img, buildMask(img), color, out);
     ctx.putImageData(out, 0, 0);
   }
+  if (overlay && !showingOriginal && !stream) drawOverlay();
 }
 
 function updateButtons() {
@@ -130,6 +134,7 @@ function updateButtons() {
 
 function render() {
   updateButtons();
+  measureUi.run.disabled = !original || !!stream;
   // While the camera is live, the next frame repaints with the new settings.
   if (!original || stream) return;
   paint(original);
@@ -143,11 +148,12 @@ canvas.addEventListener('click', (e) => {
     ry: (e.clientY - rect.top) / rect.height,
     tolerance: Number($('#tolerance').value),
   });
+  clearMeasurement();
   render();
 });
 
-buttons.undo.addEventListener('click', () => { taps.pop(); render(); });
-buttons.clear.addEventListener('click', () => { taps = []; render(); });
+buttons.undo.addEventListener('click', () => { taps.pop(); clearMeasurement(); render(); });
+buttons.clear.addEventListener('click', () => { taps = []; clearMeasurement(); render(); });
 
 // Press and hold to see the original, release to see the new color.
 const setCompare = (on) => { showingOriginal = on; render(); };
@@ -242,6 +248,116 @@ buttons.liveStart.addEventListener('click', startLive);
 buttons.liveFreeze.addEventListener('click', freezeLive);
 buttons.liveStop.addEventListener('click', stopLive);
 document.addEventListener('visibilitychange', () => { if (document.hidden) stopLive(); });
+
+// ---------- measure the wall ----------
+// The wall model labels the photo, then measure.js turns pixels into metres using a door
+// (or the ceiling height) as a ruler. The model file is optional: without it this hides.
+const GRID = 256; // longest side of the label grid used for measuring
+const OVERLAY = { [CLASSES.wall]: [47, 160, 120], [CLASSES.door]: [70, 110, 220], [CLASSES.window]: [235, 185, 40] };
+const measureUi = {
+  box: $('#measure'),
+  ref: $('#measure-ref'),
+  known: $('#measure-known'),
+  knownLabel: $('#measure-known-label'),
+  run: $('#measure-run'),
+  result: $('#measure-result'),
+};
+let overlay = null; // { grid, gw, gh, wall: Set of grid indices } while a measurement is shown
+
+const imperial = () => document.body.dataset.system === 'imperial';
+const FT_PER_M = 3.28084;
+const len = (m) => (imperial() ? `${(m * FT_PER_M).toFixed(1)} ft` : `${m.toFixed(2)} m`);
+const area = (m2) => (imperial() ? `${Math.round(m2 * FT_PER_M * FT_PER_M)} ft²` : `${m2.toFixed(1)} m²`);
+const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
+
+function setReferenceUi() {
+  const door = measureUi.ref.value === 'door';
+  measureUi.knownLabel.textContent = `${door ? 'Door height' : 'Ceiling height'} (${imperial() ? 'ft' : 'm'})`;
+  const metres = door ? STANDARD_DOOR_HEIGHT : 2.5;
+  measureUi.known.value = imperial() ? (metres * FT_PER_M).toFixed(2) : String(metres);
+}
+
+function clearMeasurement() {
+  overlay = null;
+  measureUi.result.innerHTML = '';
+}
+
+function drawOverlay() {
+  const { grid, gw, gh, wall } = overlay;
+  const w = canvas.width, h = canvas.height;
+  const img = ctx.getImageData(0, 0, w, h);
+  for (let y = 0; y < h; y++) {
+    const gy = Math.min(gh - 1, Math.floor((y * gh) / h));
+    for (let x = 0; x < w; x++) {
+      const gi = gy * gw + Math.min(gw - 1, Math.floor((x * gw) / w));
+      const c = grid[gi];
+      if (!wall.has(gi) || !OVERLAY[c]) continue;
+      const [r, g, b] = OVERLAY[c];
+      const i = (y * w + x) * 4;
+      img.data[i] = img.data[i] * 0.55 + r * 0.45;
+      img.data[i + 1] = img.data[i + 1] * 0.55 + g * 0.45;
+      img.data[i + 2] = img.data[i + 2] * 0.55 + b * 0.45;
+    }
+  }
+  ctx.putImageData(img, 0, 0);
+}
+
+const REASONS = {
+  'no-wall': "Couldn't find a wall in this photo. Try a photo with more of the wall in view.",
+  'no-door': "Couldn't find a door to use as a ruler. Choose \"The ceiling height\" instead and type it in.",
+};
+
+async function measure() {
+  if (!original) return;
+  const known = Number(measureUi.known.value);
+  if (!(known > 0)) {
+    setStatus('Enter the height to use as a ruler.', true);
+    return;
+  }
+  measureUi.run.disabled = true;
+  setStatus('Finding the wall... The first time, this downloads a 4 MB model.');
+  try {
+    const { labels, size } = await segment(original);
+    const scale = GRID / Math.max(original.width, original.height);
+    const gw = Math.max(1, Math.round(original.width * scale));
+    const gh = Math.max(1, Math.round(original.height * scale));
+    const grid = resizeLabels(labels, size, size, gw, gh);
+    const tap = taps.length ? { x: taps[taps.length - 1].rx * (gw - 1), y: taps[taps.length - 1].ry * (gh - 1) } : undefined;
+    const metres = imperial() ? known / FT_PER_M : known;
+    const m = measureWall(grid, gw, gh, { tap, reference: { kind: measureUi.ref.value, height: metres } });
+    if (!m.ok) {
+      clearMeasurement();
+      setStatus(REASONS[m.reason], true);
+      return;
+    }
+    overlay = { grid, gw, gh, wall: new Set(m.wallPixels) };
+    setStatus('');
+    const openings = [m.doors && plural(m.doors, 'door'), m.windows && plural(m.windows, 'window')].filter(Boolean).join(' and ');
+    measureUi.result.innerHTML = `
+      <p class="big">${len(m.width)} × ${len(m.height)}</p>
+      <p>About ${area(m.netArea)} to paint${openings ? ` (${area(m.grossArea)} minus ${openings})` : ''}.</p>
+      <p class="measure-legend"><span><i style="background:rgb(47,160,120)"></i>Wall</span><span><i style="background:rgb(70,110,220)"></i>Door</span><span><i style="background:rgb(235,185,40)"></i>Window</span></p>
+      <button type="button" class="btn btn-secondary" id="measure-add">Add to my estimate</button>
+      <p class="hint">This is an estimate from a photo. Check it with a tape measure before you write a quote.</p>`;
+    $('#measure-add').addEventListener('click', () => {
+      document.dispatchEvent(new CustomEvent('paintwise:add-wall', {
+        detail: { width: m.width, height: m.height, doors: m.doors, windows: m.windows },
+      }));
+    });
+  } catch (err) {
+    console.error(err);
+    setStatus("The wall model couldn't load. Check your connection and try again.", true);
+  } finally {
+    measureUi.run.disabled = !original || !!stream;
+    render();
+  }
+}
+
+measureUi.ref.addEventListener('change', setReferenceUi);
+measureUi.run.addEventListener('click', measure);
+document.addEventListener('paintwise:units', () => { setReferenceUi(); clearMeasurement(); render(); });
+setReferenceUi();
+modelAvailable().then((yes) => { measureUi.box.hidden = !yes; });
 
 // ---------- colors ----------
 const swatchBox = $('#swatches');

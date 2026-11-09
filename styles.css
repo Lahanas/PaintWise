@@ -194,3 +194,13 @@ textarea { font: inherit; color: var(--text); background: var(--bg); border: 1px
 .auth-success:empty { display: none; }
 .auth-forgot { justify-self: start; font-size: 0.875rem; margin-top: -4px; }
 #auth-intro { margin: -8px 0 0; }
+
+/* Measure a wall from the photo */
+.measure { margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--border); }
+.measure .btn { margin-top: 12px; }
+.measure-result:empty { display: none; }
+.measure-result { margin-top: 12px; padding: 12px; border-radius: 8px; background: var(--accent-soft, #e3efe9); font-size: 0.9375rem; }
+.measure-result .big { font-size: 1.375rem; font-weight: 700; color: var(--accent); }
+.measure-result p { margin: 4px 0; }
+.measure-legend { display: flex; flex-wrap: wrap; gap: 10px; font-size: 0.8125rem; color: var(--muted); }
+.measure-legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 4px; vertical-align: -1px; }

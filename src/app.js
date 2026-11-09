@@ -1,6 +1,7 @@
 import { estimate, UNIT_SYSTEMS, SURFACES } from './estimator.js';
 import { encodeProject, decodeProject, listProjects, saveProject, deleteProject } from './projects.js';
 import * as api from './api.js';
+import { addMeasuredWall } from './measure.js';
 
 const STORAGE_KEY = 'wpe:v1';
 const FT_PER_M = 3.28084;
@@ -274,7 +275,28 @@ function escapeHtml(s) {
 function update() {
   save();
   renderResult();
+  syncUnits();
 }
+
+// The color preview tab shows measurements in the same units as the job.
+let shownSystem = null;
+function syncUnits() {
+  if (state.system === shownSystem) return;
+  shownSystem = state.system;
+  document.body.dataset.system = state.system;
+  document.dispatchEvent(new Event('paintwise:units'));
+}
+
+// A wall measured from a photo in the color preview tab.
+document.addEventListener('paintwise:add-wall', (e) => {
+  const wall = /** @type {CustomEvent} */ (e).detail;
+  state.rooms = addMeasuredWall(state.rooms, wall, state.system);
+  renderRooms();
+  update();
+  location.hash = '#estimate';
+  showStatus('Added the wall to the "From photos" room. Check it below.');
+  document.querySelector('.room:last-of-type')?.scrollIntoView({ block: 'center' });
+});
 
 function fillSettings() {
   $('#system').value = state.system;

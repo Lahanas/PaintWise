@@ -4,11 +4,14 @@
 // scripts can't read; the database only keeps a SHA-256 hash of that token.
 
 import { randomBytes, scrypt as scryptCb, timingSafeEqual, createHash } from 'node:crypto';
-import { promisify } from 'node:util';
 import { query } from './db.js';
 import { HttpError, readCookie } from './http.js';
 
-const scrypt = promisify(scryptCb);
+/** @returns {Promise<Buffer>} */
+const scrypt = (password, salt, length, options) =>
+  new Promise((resolve, reject) => {
+    scryptCb(password, salt, length, options, (err, key) => (err ? reject(err) : resolve(key)));
+  });
 const COOKIE = 'pw_session';
 const SESSION_DAYS = 30;
 const KEY_LENGTH = 64;

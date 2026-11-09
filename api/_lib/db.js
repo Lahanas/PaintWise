@@ -2,6 +2,7 @@
 // Tests and local dev plug in an in-memory Postgres with setDb().
 
 import { neon } from '@neondatabase/serverless';
+import { HttpError } from './http.js';
 
 let db = null;
 let schemaReady = null;
@@ -15,9 +16,7 @@ export function setDb(custom) {
 function connect() {
   const url = process.env.DATABASE_URL || process.env.POSTGRES_URL;
   if (!url) {
-    const err = new Error('No database configured. Set DATABASE_URL.');
-    err.status = 503;
-    throw err;
+    throw new HttpError(503, 'No database configured. Set DATABASE_URL.');
   }
   const sql = neon(url);
   return { query: (text, params = []) => sql.query(text, params) };

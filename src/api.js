@@ -17,9 +17,7 @@ async function call(method, path, payload) {
   let data = null;
   try { data = text ? JSON.parse(text) : null; } catch { /* not JSON: no backend here */ }
   if (!res.ok) {
-    const err = new Error((data && data.error) || `Server error (${res.status})`);
-    err.status = res.status;
-    throw err;
+    throw Object.assign(new Error((data && data.error) || `Server error (${res.status})`), { status: res.status });
   }
   return data;
 }

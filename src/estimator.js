@@ -89,7 +89,7 @@ export function pickCans(needed, sizes, prices) {
   const target = Math.ceil(needed / step - 1e-9);
   const limit = target + Math.max(...units);
   // weight of one can: its price, or 1 (= count cans) when there are no prices
-  const weight = sorted.map((size) => (priced ? Number(prices[size]) : 1));
+  const weight = sorted.map((size) => (priced ? Number(prices?.[size]) : 1));
 
   // best[i] = lowest weight to make exactly i units
   const best = new Array(limit + 1).fill(Infinity);

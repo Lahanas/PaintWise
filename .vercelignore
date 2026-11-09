@@ -3,3 +3,4 @@ scripts/
 .data/
 .github/
 docs/
+tsconfig.json

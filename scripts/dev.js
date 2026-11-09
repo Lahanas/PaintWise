@@ -25,6 +25,7 @@ const TYPES = {
 };
 
 // Same file-based routing as Vercel: api/projects/[id].js answers /api/projects/123.
+/** @type {Array<[string | RegExp, string, string?]>} */
 const ROUTES = [
   ['/api/auth/signup', 'api/auth/signup.js'],
   ['/api/auth/login', 'api/auth/login.js'],
@@ -42,7 +43,7 @@ function matchRoute(pathname) {
     if (typeof pattern === 'string' && pattern === pathname) return { file, params: {} };
     if (pattern instanceof RegExp) {
       const m = pattern.exec(pathname);
-      if (m) return { file, params: { [param]: decodeURIComponent(m[1]) } };
+      if (m) return { file, params: { [param ?? 'id']: decodeURIComponent(m[1]) } };
     }
   }
   return null;
@@ -77,7 +78,7 @@ async function serveStatic(pathname, res) {
 /** An http.Server wired to the given database ({ query(text, params) → rows }). */
 export function createApp(db) {
   setDb(db);
-  return createServer(async (req, res) => {
+  return createServer(async (/** @type {any} */ req, res) => {
     const url = new URL(req.url, 'http://localhost');
     const match = matchRoute(url.pathname);
     if (match) {

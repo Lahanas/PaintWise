@@ -166,9 +166,27 @@ textarea { font: inherit; color: var(--text); background: var(--bg); border: 1px
 .project-name { flex: 1 1 220px; font-weight: 600; background: var(--panel); }
 .project-row select { flex: 1 1 220px; width: auto; background: var(--panel); }
 .project-status { margin: 0; min-height: 1.25em; font-size: 0.875rem; color: var(--accent); }
+.project-status.error { color: #b3261e; }
 .shared-banner { margin: 0; padding: 10px 12px; border-radius: 8px; background: var(--accent-soft); color: var(--text); font-size: 0.875rem; }
 
 /* Live camera */
 .preview-status { margin: -8px 0 12px; min-height: 1.25em; font-size: 0.875rem; color: var(--accent); }
 .preview-status.error { color: #b3261e; }
 .live-badge { position: absolute; top: 10px; left: 10px; padding: 2px 8px; border-radius: 999px; background: #d93025; color: #fff; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.06em; }
+
+/* Account */
+.tabs { align-items: center; }
+.account { margin-left: auto; display: flex; align-items: center; gap: 8px; font-size: 0.875rem; padding-bottom: 4px; }
+.account-email { color: var(--muted); max-width: 40vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline-block; vertical-align: bottom; }
+.link-btn { font: inherit; border: 0; background: none; padding: 0; color: var(--accent); cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
+.btn-small { padding: 4px 10px; font-size: 0.875rem; }
+.move-btn { justify-self: start; }
+.login-hint { margin: 0; }
+.auth-dialog { border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; width: min(380px, calc(100vw - 32px)); background: var(--panel); color: var(--text); }
+.auth-dialog::backdrop { background: rgb(0 0 0 / 0.45); }
+.auth-dialog h2 { margin: 0 0 16px; font-size: 1.25rem; }
+.auth-dialog form { display: grid; gap: 12px; }
+.auth-dialog .hint { margin: -6px 0 0; }
+.auth-error { margin: 0; min-height: 1.25em; color: #b3261e; font-size: 0.875rem; }
+.auth-actions { display: flex; gap: 8px; }
+@media (max-width: 480px) { .tabs { flex-wrap: wrap; } .account { margin-left: 0; width: 100%; padding: 6px 0; } }

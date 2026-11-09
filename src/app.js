@@ -1,5 +1,6 @@
 import { estimate, UNIT_SYSTEMS, SURFACES } from './estimator.js';
 import { encodeProject, decodeProject, listProjects, saveProject, deleteProject } from './projects.js';
+import * as api from './api.js';
 
 const STORAGE_KEY = 'wpe:v1';
 const FT_PER_M = 3.28084;
@@ -404,26 +405,82 @@ function bindPricing() {
 }
 
 // ---------- saved projects and share links ----------
+// Projects are saved on this device, or in your account when you're logged in.
+// Both places answer the same questions (list, open, save, delete), so the buttons don't care which.
+const localStore = {
+  cloud: false,
+  list: async () => listProjects(),
+  get: async (id) => listProjects().find((p) => p.id === id) || null,
+  save: async (name, data, id) => saveProject(name, data, id),
+  remove: async (id) => deleteProject(id),
+};
+
+const cloudStore = {
+  cloud: true,
+  list: () => api.listProjects(),
+  get: async (id) => {
+    const p = await api.getProject(id);
+    return { id: p.id, name: p.name, updated: p.updated, state: p.data };
+  },
+  save: (name, data, id) => (id ? api.updateProject(id, name, data) : api.createProject(name, data)),
+  remove: (id) => api.deleteProject(id),
+};
+
+let account = { available: false, user: null };
+let store = localStore;
+let projectCache = [];
+
 let statusTimer;
-function showStatus(text) {
+function showStatus(text, isError = false) {
   const el = $('#project-status');
   el.textContent = text;
+  el.classList.toggle('error', isError);
   clearTimeout(statusTimer);
-  statusTimer = setTimeout(() => { el.textContent = ''; }, 4000);
+  statusTimer = setTimeout(() => { el.textContent = ''; }, isError ? 8000 : 4000);
 }
 
 function formatDate(ms) {
   return new Date(ms).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 }
 
-function renderProjectList() {
-  const projects = listProjects();
+// Run a project action, showing a friendly message if the server says no.
+async function attempt(fn) {
+  try {
+    return await fn();
+  } catch (err) {
+    if (err.status === 401 && store.cloud) {
+      await setAccount(null);
+      showStatus('You were logged out. Log in again to use your saved projects.', true);
+    } else {
+      showStatus(err.message || 'Something went wrong.', true);
+    }
+    return undefined;
+  }
+}
+
+async function renderProjectList() {
+  projectCache = (await attempt(() => store.list())) || [];
   const select = $('#project-list');
-  select.innerHTML = '<option value="">My projects…</option>' +
-    projects.map((p) => `<option value="${p.id}">${escapeHtml(p.name)} · ${formatDate(p.updated)}</option>`).join('');
-  select.value = projects.some((p) => p.id === state.projectId) ? state.projectId : '';
-  $('#project-open').hidden = projects.length === 0;
+  const label = store.cloud ? 'My projects (in your account)…' : 'My projects (on this device)…';
+  select.innerHTML = `<option value="">${label}</option>` +
+    projectCache.map((p) => `<option value="${p.id}">${escapeHtml(p.name)} · ${formatDate(p.updated)}</option>`).join('');
+  select.value = projectCache.some((p) => p.id === state.projectId) ? state.projectId : '';
+  $('#project-open').hidden = projectCache.length === 0;
   $('#delete-project').disabled = !state.projectId;
+  renderMoveOffer();
+}
+
+// After logging in: offer to move projects saved on this device into the account.
+function renderMoveOffer() {
+  const local = store.cloud ? listProjects() : [];
+  const btn = $('#move-projects');
+  btn.hidden = local.length === 0;
+  btn.textContent = `Move ${local.length} project${local.length === 1 ? '' : 's'} from this device to your account`;
+}
+
+function projectData() {
+  const { projectId, projectName, ...data } = state;
+  return { ...data, projectName };
 }
 
 function bindProjects() {
@@ -431,45 +488,59 @@ function bindProjects() {
   name.value = state.projectName || '';
   name.addEventListener('input', () => { state.projectName = name.value; save(); });
 
-  $('#save-project').addEventListener('click', () => {
-    const entry = saveProject(state.projectName, { ...state, projectId: undefined }, state.projectId);
+  $('#save-project').addEventListener('click', async () => {
+    const entry = await attempt(() => store.save(state.projectName, projectData(), state.projectId));
+    if (!entry) return;
     state.projectId = entry.id;
     state.projectName = entry.name;
     name.value = entry.name;
     save();
-    renderProjectList();
-    showStatus(`Saved “${entry.name}”`);
+    await renderProjectList();
+    showStatus(store.cloud ? `Saved “${entry.name}” to your account` : `Saved “${entry.name}” on this device`);
   });
 
-  $('#new-project').addEventListener('click', () => {
+  $('#new-project').addEventListener('click', async () => {
     setState({ ...defaultState(), system: state.system, currency: state.currency, prices: state.prices, quote: { ...defaultState().quote, business: state.quote.business }, rooms: [{ name: 'Room 1', length: '', width: '', height: '', doors: 1, windows: 1 }] });
     name.value = '';
-    renderProjectList();
+    await renderProjectList();
     showStatus('New project started. Your prices were kept.');
   });
 
-  $('#project-list').addEventListener('change', (e) => {
-    const p = listProjects().find((x) => x.id === e.target.value);
+  $('#project-list').addEventListener('change', async (e) => {
+    if (!e.target.value) return;
+    const p = await attempt(() => store.get(e.target.value));
     if (!p) return;
     setState({ ...p.state, projectId: p.id, projectName: p.name });
     name.value = p.name;
-    renderProjectList();
+    await renderProjectList();
     showStatus(`Opened “${p.name}”`);
   });
 
-  $('#delete-project').addEventListener('click', () => {
-    const p = listProjects().find((x) => x.id === state.projectId);
+  $('#delete-project').addEventListener('click', async () => {
+    const p = projectCache.find((x) => x.id === state.projectId);
     if (!p || !confirm(`Delete “${p.name}”? This can't be undone.`)) return;
-    deleteProject(p.id);
+    if ((await attempt(() => store.remove(p.id).then(() => true))) !== true) return;
     state.projectId = undefined;
     save();
-    renderProjectList();
+    await renderProjectList();
     showStatus(`Deleted “${p.name}”`);
   });
 
+  $('#move-projects').addEventListener('click', async () => {
+    const local = listProjects();
+    let moved = 0;
+    for (const p of local) {
+      const ok = await attempt(() => cloudStore.save(p.name, p.state).then(() => true));
+      if (!ok) break;
+      deleteProject(p.id);
+      moved++;
+    }
+    await renderProjectList();
+    if (moved) showStatus(`Moved ${moved} project${moved === 1 ? '' : 's'} to your account`);
+  });
+
   $('#share-project').addEventListener('click', async () => {
-    const { projectId, ...shared } = state;
-    const url = `${location.origin}${location.pathname}#p=${await encodeProject(shared)}`;
+    const url = `${location.origin}${location.pathname}#p=${await encodeProject(projectData())}`;
     const title = state.projectName || 'PaintWise project';
     try {
       if (navigator.share && matchMedia('(pointer: coarse)').matches) {
@@ -483,8 +554,89 @@ function bindProjects() {
       prompt('Copy this link:', url);
     }
   });
+}
 
-  renderProjectList();
+// ---------- account ----------
+async function setAccount(user) {
+  const wasCloud = store.cloud;
+  account.user = user;
+  store = user ? cloudStore : localStore;
+  // A project id from one place means nothing in the other, so the open job becomes unsaved.
+  if (wasCloud !== store.cloud) {
+    state.projectId = undefined;
+    save();
+  }
+  renderAccount();
+  await renderProjectList();
+}
+
+function renderAccount() {
+  const box = $('#account');
+  box.hidden = !account.available;
+  $('#account-email').textContent = account.user ? account.user.email : '';
+  $('#account-in').hidden = !account.user;
+  $('#account-out').hidden = !!account.user;
+  $('#login-hint').hidden = !account.available || !!account.user;
+}
+
+function bindAccount() {
+  const dialog = $('#auth-dialog');
+  const form = $('#auth-form');
+  const error = $('#auth-error');
+  let mode = 'login';
+
+  const setMode = (next) => {
+    mode = next;
+    $('#auth-title').textContent = mode === 'login' ? 'Log in' : 'Create your account';
+    $('#auth-submit').textContent = mode === 'login' ? 'Log in' : 'Create account';
+    $('#auth-switch').textContent = mode === 'login' ? 'New here? Create an account' : 'Already have an account? Log in';
+    $('#auth-password').autocomplete = mode === 'login' ? 'current-password' : 'new-password';
+    $('#auth-password-hint').hidden = mode === 'login';
+    error.textContent = '';
+  };
+
+  const open = (next) => {
+    setMode(next);
+    form.reset();
+    dialog.showModal();
+    $('#auth-email').focus();
+  };
+
+  $('#open-login').addEventListener('click', () => open('login'));
+  $('#open-signup').addEventListener('click', () => open('signup'));
+  $('#login-hint-link').addEventListener('click', () => open('signup'));
+  $('#auth-switch').addEventListener('click', () => setMode(mode === 'login' ? 'signup' : 'login'));
+  $('#auth-cancel').addEventListener('click', () => dialog.close());
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const submit = $('#auth-submit');
+    submit.disabled = true;
+    error.textContent = '';
+    try {
+      const email = $('#auth-email').value;
+      const password = $('#auth-password').value;
+      const user = mode === 'login' ? await api.login(email, password) : await api.signup(email, password);
+      dialog.close();
+      await setAccount(user);
+      showStatus(mode === 'login' ? `Welcome back, ${user.email}` : 'Account created. Your projects will now be saved to it.');
+    } catch (err) {
+      error.textContent = err.message;
+    } finally {
+      submit.disabled = false;
+    }
+  });
+
+  $('#logout').addEventListener('click', async () => {
+    await api.logout().catch(() => {});
+    await setAccount(null);
+    showStatus('Logged out. New saves stay on this device.');
+  });
+}
+
+async function initAccount() {
+  account = await api.getSession();
+  await setAccount(account.user);
 }
 
 // Opening a share link: load it as an unsaved copy, then clean the URL.
@@ -494,12 +646,12 @@ async function openSharedLink() {
   history.replaceState(null, '', location.pathname + location.search);
   const project = await decodeProject(match[1]);
   if (!project) {
-    showStatus('That link looks broken, so your current project was kept.');
+    showStatus('That link looks broken, so your current project was kept.', true);
     return;
   }
   setState({ ...project, projectId: undefined });
   $('#project-name').value = state.projectName || '';
-  renderProjectList();
+  await renderProjectList();
   $('#shared-banner').hidden = false;
 }
 
@@ -508,4 +660,6 @@ bindPricing();
 renderRooms();
 update();
 bindProjects();
-openSharedLink();
+bindAccount();
+renderProjectList();
+initAccount().then(openSharedLink);

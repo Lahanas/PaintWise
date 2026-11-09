@@ -14,6 +14,10 @@
     <nav class="tabs" aria-label="Tools">
       <a href="#estimate" class="tab" data-tab="estimate">Paint calculator</a>
       <a href="#preview" class="tab" data-tab="preview">Color preview</a>
+      <div class="account" id="account" hidden>
+        <span id="account-in" hidden><span class="account-email" id="account-email"></span> <button type="button" class="link-btn" id="logout">Log out</button></span>
+        <span id="account-out"><button type="button" class="link-btn" id="open-login">Log in</button> <button type="button" class="btn btn-small" id="open-signup">Sign up</button></span>
+      </div>
     </nav>
   </header>
 
@@ -30,6 +34,8 @@
         <select id="project-list" aria-label="Open a saved project"></select>
         <button type="button" class="btn btn-secondary" id="delete-project">Delete</button>
       </div>
+      <button type="button" class="btn btn-secondary move-btn" id="move-projects" hidden></button>
+      <p class="hint login-hint" id="login-hint" hidden>Projects are saved on this device only. <button type="button" class="link-btn" id="login-hint-link">Create a free account</button> to keep them on your phone and computer.</p>
       <p class="project-status" id="project-status" role="status" aria-live="polite"></p>
     </section>
 
@@ -197,6 +203,21 @@
       <button type="button" class="remove-wall" aria-label="Remove wall">×</button>
     </li>
   </template>
+
+  <dialog class="auth-dialog" id="auth-dialog" aria-labelledby="auth-title">
+    <form id="auth-form" novalidate>
+      <h2 id="auth-title">Log in</h2>
+      <label>Email<input id="auth-email" type="email" autocomplete="email" required /></label>
+      <label>Password<input id="auth-password" type="password" autocomplete="current-password" minlength="8" required /></label>
+      <p class="hint" id="auth-password-hint" hidden>At least 8 characters.</p>
+      <p class="auth-error" id="auth-error" role="alert"></p>
+      <div class="auth-actions">
+        <button type="submit" class="btn" id="auth-submit">Log in</button>
+        <button type="button" class="btn btn-secondary" id="auth-cancel">Cancel</button>
+      </div>
+      <button type="button" class="link-btn" id="auth-switch">New here? Create an account</button>
+    </form>
+  </dialog>
 
   <section class="quote" id="quote" aria-hidden="true"></section>
 

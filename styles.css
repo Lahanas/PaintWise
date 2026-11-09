@@ -108,7 +108,7 @@ label.wide { grid-column: span 2; }
 .preview-body { display: grid; gap: 16px; grid-template-columns: minmax(0, 1fr) 280px; align-items: start; }
 @media (max-width: 800px) { .preview-body { grid-template-columns: 1fr; } }
 .stage { position: relative; background: var(--bg); border: 1px dashed var(--border); border-radius: 8px; min-height: 240px; display: grid; place-items: center; overflow: hidden; }
-.stage canvas { display: block; max-width: 100%; height: auto; cursor: crosshair; touch-action: manipulation; }
+.stage canvas { display: block; width: 100%; height: auto; cursor: crosshair; touch-action: manipulation; }
 .stage canvas:not(.ready) { display: none; }
 .stage-empty { color: var(--muted); margin: 0; padding: 24px; text-align: center; }
 .preview-tools h3 { margin-top: 0; }
@@ -167,3 +167,8 @@ textarea { font: inherit; color: var(--text); background: var(--bg); border: 1px
 .project-row select { flex: 1 1 220px; width: auto; background: var(--panel); }
 .project-status { margin: 0; min-height: 1.25em; font-size: 0.875rem; color: var(--accent); }
 .shared-banner { margin: 0; padding: 10px 12px; border-radius: 8px; background: var(--accent-soft); color: var(--text); font-size: 0.875rem; }
+
+/* Live camera */
+.preview-status { margin: -8px 0 12px; min-height: 1.25em; font-size: 0.875rem; color: var(--accent); }
+.preview-status.error { color: #b3261e; }
+.live-badge { position: absolute; top: 10px; left: 10px; padding: 2px 8px; border-radius: 999px; background: #d93025; color: #fff; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.06em; }

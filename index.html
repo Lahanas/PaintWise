@@ -111,7 +111,7 @@
   <main class="preview" id="tab-preview" hidden>
     <section class="panel" aria-labelledby="preview-title">
       <h2 id="preview-title">See your wall in a new color</h2>
-      <p class="hint preview-intro">Take a photo of the wall (or upload one), then tap the wall to paint it. Your photo stays on your device; nothing is uploaded.</p>
+      <p class="hint preview-intro">Take a photo of the wall, upload one, or point your live camera at it. Then tap the wall to paint it. Everything stays on your device; nothing is uploaded.</p>
       <div class="preview-actions">
         <label class="btn file-btn">Take a photo
           <input id="photo-camera" type="file" accept="image/*" capture="environment" />
@@ -119,11 +119,17 @@
         <label class="btn btn-secondary file-btn">Upload a photo
           <input id="photo-upload" type="file" accept="image/*" />
         </label>
+        <button type="button" class="btn btn-secondary" id="live-start">Live camera</button>
+        <button type="button" class="btn" id="live-freeze" hidden>Take picture</button>
+        <button type="button" class="btn btn-secondary" id="live-stop" hidden>Stop camera</button>
       </div>
+      <p class="preview-status" id="preview-status" role="status" aria-live="polite"></p>
 
       <div class="preview-body">
         <div class="stage" id="stage">
           <canvas id="preview-canvas" aria-label="Wall photo. Tap a wall to paint it."></canvas>
+          <video id="live-video" playsinline muted hidden></video>
+          <span class="live-badge" id="live-badge" hidden>LIVE</span>
           <p class="stage-empty" id="stage-empty">Your photo will show up here.</p>
         </div>
 

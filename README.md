@@ -13,7 +13,7 @@
 ![Playwright](https://img.shields.io/badge/Tested_with-Playwright-2ead33?logo=playwright&logoColor=white)
 ![License: MIT](https://img.shields.io/badge/License-MIT-lightgrey)
 
-[Try it](https://paintwise-ten.vercel.app) · [Features](#-what-it-does) · [How it's built](#-how-its-built) · [Interesting problems](#-interesting-problems-i-solved) · [Run it locally](#-run-it-yourself)
+[Try it](https://paintwise-ten.vercel.app) · [Features](#-what-it-does) · [How it's built](#-how-its-built) · [How the tricky parts work](#-how-the-tricky-parts-work) · [Run it locally](#-run-it-yourself)
 
 <img src="docs/calculator.png" alt="PaintWise paint calculator with two rooms, an estimate of 16.8 litres and a cost breakdown" width="860">
 
@@ -84,7 +84,7 @@ flowchart LR
     B -. reset links .-> E
 ```
 
-| Layer | Tech | Why I chose it |
+| Layer | Tech | Why |
 | --- | --- | --- |
 | Frontend | Plain HTML, CSS and JavaScript (ES modules) | No framework and no build step, so it loads instantly on a phone at the job site |
 | Backend | Vercel Functions (Node.js) | Each file in `api/` is one endpoint. No server to look after, and it scales to zero |
@@ -96,13 +96,13 @@ flowchart LR
 
 **It works with or without the backend.** If the API isn't there (for example on GitHub Pages), the account features hide themselves and projects are saved on the device.
 
-## 🧠 Interesting problems I solved
+## 🧠 How the tricky parts work
 
 <details>
 <summary><b>Picking the cheapest mix of paint cans</b></summary>
 <br>
 
-Buying 16.8 L sounds simple, until cans come in 1, 2.5, 5 and 10 L and a 10 L bucket costs less per litre than four small tins. Trying every combination gets slow, so I used **dynamic programming**: the app works out the cheapest way to reach every amount on a small grid (based on the greatest common divisor of the can sizes), then picks the cheapest amount that covers what you need. Without prices, the same method finds the fewest cans with the least paint left over. See `pickCans` in [`src/estimator.js`](src/estimator.js).
+Buying 16.8 L sounds simple, until cans come in 1, 2.5, 5 and 10 L and a 10 L bucket costs less per litre than four small tins. Trying every combination gets slow, so it uses **dynamic programming**: it works out the cheapest way to reach every amount on a small grid (based on the greatest common divisor of the can sizes), then picks the cheapest amount that covers what you need. Without prices, the same method finds the fewest cans with the least paint left over. See `pickCans` in [`src/estimator.js`](src/estimator.js).
 </details>
 
 <details>

@@ -6,7 +6,7 @@
 // Tests import createApp() to run the API against a throwaway database.
 
 import { createServer } from 'node:http';
-import { readFile, stat } from 'node:fs/promises';
+import { readFile, stat, appendFile } from 'node:fs/promises';
 import { extname, join, normalize, dirname } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { setDb } from '../api/_lib/db.js';
@@ -111,7 +111,11 @@ if (import.meta.url === pathToFileURL(process.argv[1]).href) {
   const db = await pgliteDb(process.env.DATA_DIR === 'memory' ? undefined : join(ROOT, process.env.DATA_DIR || '.data'));
   // Locally, emails are printed here instead of being sent.
   if (!process.env.RESEND_API_KEY) {
-    setMailer(async ({ to, subject, text }) => console.log(`\n--- email to ${to}: ${subject}\n${text}\n---\n`));
+    setMailer(async ({ to, subject, text }) => {
+      console.log(`\n--- email to ${to}: ${subject}\n${text}\n---\n`);
+      // MAIL_OUTBOX=<file> also saves each email there, so the browser tests can read them.
+      if (process.env.MAIL_OUTBOX) await appendFile(process.env.MAIL_OUTBOX, JSON.stringify({ to, subject, text }) + '\n');
+    });
   }
   createApp(db).listen(port, () => console.log(`PaintWise running at http://localhost:${port}`));
 }

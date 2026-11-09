@@ -43,6 +43,11 @@ EPOCHS = 1 if SMOKE else 12
 BATCH = 4 if SMOKE else 16
 LR = 2e-4
 SEED = 42
+# Which weights to start from:
+#   'nvidia/mit-b0': encoder trained on ImageNet only (run 1: door IoU 0.27)
+#   'nvidia/segformer-b0-finetuned-ade-512-512': the whole model already trained on all 150
+#   ADE20K classes, doors included. Only the last layer (150 classes -> our 4) starts fresh. (run 2)
+START_FROM = 'nvidia/segformer-b0-finetuned-ade-512-512'
 CLASSES = ['other', 'wall', 'door', 'window']
 OUT = Path('out'); OUT.mkdir(exist_ok=True)
 
@@ -156,16 +161,18 @@ val_dl = DataLoader(WallPhotos(val_items, False), batch_size=BATCH, num_workers=
 # %% [markdown]
 # ## 3. The model
 #
-# SegFormer-B0 has 3.7 million parameters. The encoder (which learns what's in a picture)
-# starts from weights trained on ImageNet. The small head that turns features into our four
-# classes starts from scratch.
+# SegFormer-B0 has 3.7 million parameters. How much it already knows depends on `START_FROM`
+# (see the settings above). Starting from the model that was already trained on ADE20K's 150
+# classes means it already knows doors and windows; we only teach it our 4-class version.
 
 # %%
 labels = dict(id2label=dict(enumerate(CLASSES)), label2id={c: i for i, c in enumerate(CLASSES)})
 if SMOKE:
     model = SegformerForSemanticSegmentation(SegformerConfig(num_labels=len(CLASSES), **labels))
 else:
-    model = SegformerForSemanticSegmentation.from_pretrained('nvidia/mit-b0', num_labels=len(CLASSES), **labels)
+    # ignore_mismatched_sizes: the last layer has 4 outputs here instead of 150, so it starts fresh.
+    model = SegformerForSemanticSegmentation.from_pretrained(START_FROM, num_labels=len(CLASSES),
+                                                             ignore_mismatched_sizes=True, **labels)
 model.to(device)
 print(f'{sum(p.numel() for p in model.parameters()) / 1e6:.1f}M parameters')
 
@@ -297,7 +304,7 @@ print(f'ONNX model: {size_mb:.1f} MB, agrees with PyTorch on {agreement:.1%} of 
 # %%
 final = history[-1]
 metrics = {
-    'model': 'SegFormer-B0 (ImageNet encoder), 4 classes',
+    'model': f'SegFormer-B0 from {START_FROM}, 4 classes',
     'dataset': 'ADE20K scene parsing, photos with >=10% wall',
     'train_photos': len(train_items), 'validation_photos': len(val_items),
     'epochs': EPOCHS, 'image_size': SIZE,

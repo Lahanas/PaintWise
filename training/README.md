@@ -9,17 +9,18 @@ how accurate the measurements are.
 | `train_wall_model.ipynb` | The training notebook: data, model, training, export to ONNX |
 | `train_wall_model.py` | The same code as a plain Python script (handy for reading diffs) |
 | `measurements.csv` | Tape measure vs app, one row per wall |
+| `metrics-run1.json` | Results of the first training run (ImageNet start, 12 epochs, 30 min on a T4) |
 
 ## 1. Train the model (about an hour, free)
 
 1. Open [Google Colab](https://colab.research.google.com), choose **File → Upload notebook**, and pick `train_wall_model.ipynb`.
 2. **Runtime → Change runtime type → T4 GPU**, then **Runtime → Run all**.
 3. When it finishes, two files download: `wall-seg.onnx` and `metrics.json`.
-4. Put `wall-seg.onnx` in the repo's `models/` folder and `metrics.json` in this folder.
+4. Put `wall-seg.onnx` in the repo's `models/` folder and `metrics.json` in this folder (rename it `metrics-runN.json`).
 
 What happens inside: it downloads [ADE20K](https://groups.csail.mit.edu/vision/datasets/ADE20K/)
 (20,000 labelled photos), keeps the ones that show walls, and merges its 150 classes into our 4.
-It then trains SegFormer-B0 (3.7M parameters, encoder pretrained on ImageNet) for 12 epochs,
+It then trains SegFormer-B0 (3.7M parameters, starting from the weights set in `START_FROM`) for 12 epochs,
 measures intersection-over-union on validation photos it never saw, and exports a quantized
 ONNX file (about 4 MB) that runs in the browser.
 

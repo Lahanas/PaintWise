@@ -44,6 +44,18 @@ const SCHEMA = [
      updated_at timestamptz NOT NULL DEFAULT now()
    )`,
   `CREATE INDEX IF NOT EXISTS projects_by_user ON projects (user_id, updated_at DESC)`,
+  // One row per counted event (a failed login, a reset email), used to slow down attackers.
+  `CREATE TABLE IF NOT EXISTS rate_limits (
+     key text NOT NULL,
+     at timestamptz NOT NULL DEFAULT now()
+   )`,
+  `CREATE INDEX IF NOT EXISTS rate_limits_by_key ON rate_limits (key, at)`,
+  `CREATE TABLE IF NOT EXISTS password_resets (
+     token_hash text PRIMARY KEY,
+     user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+     expires_at timestamptz NOT NULL,
+     used_at timestamptz
+   )`,
 ];
 
 /** Run a query and return the rows. */

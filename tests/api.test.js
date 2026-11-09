@@ -20,14 +20,18 @@ after(async () => {
 });
 
 // A tiny browser: remembers the session cookie between requests.
+// Each one gets its own IP address, like separate visitors (Vercel sets this header).
+let nextIp = 1;
 function client() {
   let cookie = '';
+  const ip = `10.0.${Math.floor(nextIp / 250)}.${(nextIp++ % 250) + 1}`;
   return async function call(method, path, payload, headers = {}) {
     const res = await fetch(base + path, {
       method,
       headers: {
         ...(payload !== undefined ? { 'content-type': 'application/json' } : {}),
         ...(cookie ? { cookie } : {}),
+        'x-forwarded-for': ip,
         ...headers,
       },
       body: payload !== undefined ? JSON.stringify(payload) : undefined,
@@ -150,4 +154,35 @@ test('changes must be sent as JSON (blocks cross-site form posts)', async () => 
 
 test('wrong method is refused', async () => {
   assert.equal((await client()('GET', '/api/auth/login')).status, 405);
+});
+
+test('too many wrong passwords locks that account for a while', async () => {
+  await client()('POST', '/api/auth/signup', { email: 'locked@example.com', password: 'the-right-one' });
+  const call = client();
+  for (let i = 0; i < 8; i++) {
+    assert.equal((await call('POST', '/api/auth/login', { email: 'locked@example.com', password: `guess-${i}-xx` })).status, 401);
+  }
+  const blocked = await call('POST', '/api/auth/login', { email: 'locked@example.com', password: 'the-right-one' });
+  assert.equal(blocked.status, 429, 'even the right password waits, so guessing gains nothing');
+  assert.match(blocked.body.error, /Too many attempts/);
+  // other accounts are not affected
+  await client()('POST', '/api/auth/signup', { email: 'fine@example.com', password: 'longenough' });
+  assert.equal((await client()('POST', '/api/auth/login', { email: 'fine@example.com', password: 'longenough' })).status, 200);
+});
+
+test('a successful login resets the failed-login counter', async () => {
+  await client()('POST', '/api/auth/signup', { email: 'reset-count@example.com', password: 'the-right-one' });
+  const call = client();
+  for (let i = 0; i < 7; i++) await call('POST', '/api/auth/login', { email: 'reset-count@example.com', password: `nope-${i}-xx` });
+  assert.equal((await call('POST', '/api/auth/login', { email: 'reset-count@example.com', password: 'the-right-one' })).status, 200);
+  for (let i = 0; i < 7; i++) await call('POST', '/api/auth/login', { email: 'reset-count@example.com', password: `nope-${i}-yy` });
+  assert.equal((await call('POST', '/api/auth/login', { email: 'reset-count@example.com', password: 'the-right-one' })).status, 200);
+});
+
+test('too many failed logins from one IP address are blocked too', async () => {
+  const call = client();
+  for (let i = 0; i < 30; i++) {
+    await call('POST', '/api/auth/login', { email: `nobody${i}@example.com`, password: 'whatever-xx' });
+  }
+  assert.equal((await call('POST', '/api/auth/login', { email: 'someone@example.com', password: 'whatever-xx' })).status, 429);
 });

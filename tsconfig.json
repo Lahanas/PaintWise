@@ -13,5 +13,5 @@
     "strictNullChecks": true,
     "skipLibCheck": true
   },
-  "include": ["src/estimator.js", "src/recolor.js", "src/projects.js", "src/api.js", "api/**/*.js", "scripts/dev.js"]
+  "include": ["src/estimator.js", "src/recolor.js", "src/projects.js", "src/api.js", "src/measure.js", "src/segment.js", "api/**/*.js", "scripts/dev.js"]
 }

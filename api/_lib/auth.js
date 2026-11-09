@@ -28,7 +28,7 @@ export async function verifyPassword(password, stored) {
   return timingSafeEqual(key, expected);
 }
 
-const sha256 = (text) => createHash('sha256').update(text).digest('hex');
+export const sha256 = (text) => createHash('sha256').update(text).digest('hex');
 
 export function normalizeEmail(email) {
   const value = String(email || '').trim().toLowerCase();
@@ -52,6 +52,11 @@ function cookieHeader(req, value, maxAgeSeconds) {
     `Max-Age=${maxAgeSeconds}`,
     secure ? 'Secure' : '',
   ].filter(Boolean).join('; ');
+}
+
+/** Log out everywhere: remove all of a user's sessions (after a password change or reset). */
+export async function endAllSessions(userId) {
+  await query('DELETE FROM sessions WHERE user_id = $1', [userId]);
 }
 
 /** Start a session for this user and set the cookie. */

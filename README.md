@@ -136,7 +136,14 @@ When you tap the wall, a **flood fill** spreads out from that point and selects 
 <br>
 
 - **The model:** SegFormer-B0, a small segmentation transformer (3.7M parameters), trained in PyTorch on a Colab GPU to label every pixel as wall, door, window or other. The training data is [ADE20K](https://groups.csail.mit.edu/vision/datasets/ADE20K/): 9,468 photos that show walls, with its 150 classes merged into our 4. The whole training notebook is in [`training/`](training).
-- **First results**, on 958 validation photos it never saw (intersection over union): **wall 0.68, window 0.53, door 0.27**. Doors are the weak spot, so the next training run starts from a model that already knows ADE20K's doors. The full numbers are in [`training/metrics-run1.json`](training/metrics-run1.json).
+- **Results**, on 958 validation photos it never saw (intersection over union, higher is better):
+
+  | Training run | Wall | Window | Door | Mean |
+  | --- | --- | --- | --- | --- |
+  | Run 1: started from ImageNet weights | 0.68 | 0.53 | 0.27 | 0.57 |
+  | Run 2: started from a model already trained on ADE20K | **0.70** | **0.55** | **0.33** | **0.60** |
+
+  Doors were the weak spot, so run 2 starts from weights that already know ADE20K's 150 classes. Door IoU went up by a fifth, but doors are still the hardest class (they are small, and often open or half hidden). The full numbers are in [`training/metrics-run1.json`](training/metrics-run1.json) and [`training/metrics-run2.json`](training/metrics-run2.json).
 - **In the browser:** the model is exported to ONNX and quantized to 8-bit (15 MB → 4 MB), then runs with ONNX Runtime Web (WebAssembly), in about half a second on a laptop. The photo never leaves the phone.
 - **From pixels to metres:** the app finds the wall you tapped, takes its height column by column (the median, so a sofa in front doesn't shrink it), and converts pixels to metres using the tallest door (2.03 m) or the ceiling height. See [`src/measure.js`](src/measure.js).
 - **Limits:** the photo should be taken roughly straight on, and accuracy against a tape measure is still being measured on real walls ([how](training/README.md)).
@@ -216,7 +223,8 @@ Without the email key, the app works the same, just without the "Forgot your pas
 - [x] **v0.6** Backend with accounts and projects saved in the cloud
 - [x] **v0.7** Password reset by email, login rate limits, type checking, browser tests
 - [x] **v0.8** Measure a wall from a photo with a machine learning model (beta)
-- [ ] **Next** Better door detection, and accuracy checked against a tape measure on real walls
+- [x] **v0.9** Better door detection (door IoU 0.27 → 0.33)
+- [ ] **Next** Accuracy checked against a tape measure on real walls
 - [ ] **Later** Install it on your phone like an app and use it offline, and color palettes from real paint brands
 
 ## 👋 About me

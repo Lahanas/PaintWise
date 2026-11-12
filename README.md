@@ -145,7 +145,7 @@ When you tap the wall, a **flood fill** spreads out from that point and selects 
 
   Doors were the weak spot, so run 2 starts from weights that already know ADE20K's 150 classes. Door IoU went up by a fifth, but doors are still the hardest class (they are small, and often open or half hidden). The full numbers are in [`training/metrics-run1.json`](training/metrics-run1.json) and [`training/metrics-run2.json`](training/metrics-run2.json).
 - **In the browser:** the model is exported to ONNX and quantized to 8-bit (15 MB → 4 MB), then runs with ONNX Runtime Web (WebAssembly), in about half a second on a laptop. The photo never leaves the phone.
-- **From pixels to metres:** the app finds the wall you tapped, takes its height column by column (the median, so a sofa in front doesn't shrink it), and converts pixels to metres using the tallest door (2.03 m) or the ceiling height. See [`src/measure.js`](src/measure.js).
+- **From pixels to metres:** the app finds the wall you tapped, takes its height column by column (the median, so a sofa in front doesn't shrink it), and converts pixels to metres using the tallest door (2.08 m to the top of its frame, since the model counts the frame as part of the door) or the ceiling height. See [`src/measure.js`](src/measure.js).
 - **Limits:** the photo should be taken roughly straight on, and accuracy against a tape measure is still being measured on real walls ([how](training/README.md)).
 </details>
 

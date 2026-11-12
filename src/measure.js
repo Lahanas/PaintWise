@@ -2,12 +2,13 @@
 // produces for a photo (0 = other, 1 = wall, 2 = door, 3 = window).
 //
 // The photo has no sense of scale on its own, so we need one thing of known size:
-//   - a door (standard doors are about 2.03 m / 80 in tall), or
+//   - a door, measured to the top of its frame (the model counts the frame as part of
+//     the door; a standard 80 in door with its frame is about 2.08 m), or
 //   - the ceiling height, typed in by the user.
 // Everything else is pixel counting. It assumes the photo is taken roughly straight on.
 
 export const CLASSES = { other: 0, wall: 1, door: 2, window: 3 };
-export const STANDARD_DOOR_HEIGHT = 2.03; // metres (80 in)
+export const STANDARD_DOOR_HEIGHT = 2.08; // metres, floor to the top of the door frame
 
 /**
  * Resize a label grid with nearest-neighbour sampling (labels can't be blended).

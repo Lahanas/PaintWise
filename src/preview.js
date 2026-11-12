@@ -272,7 +272,7 @@ const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
 function setReferenceUi() {
   const door = measureUi.ref.value === 'door';
-  measureUi.knownLabel.textContent = `${door ? 'Door height' : 'Ceiling height'} (${imperial() ? 'ft' : 'm'})`;
+  measureUi.knownLabel.textContent = `${door ? 'Door height, frame included' : 'Ceiling height'} (${imperial() ? 'ft' : 'm'})`;
   const metres = door ? STANDARD_DOOR_HEIGHT : 2.5;
   measureUi.known.value = imperial() ? (metres * FT_PER_M).toFixed(2) : String(metres);
 }

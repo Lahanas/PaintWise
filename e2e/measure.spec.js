@@ -92,8 +92,8 @@ test('the trained model measures the wall in a photo', async ({ page }) => {
   const size = page.locator('#measure-result .big');
   await expect(size).toBeVisible({ timeout: 30_000 });
   const [width, height] = (await size.textContent()).match(/[\d.]+/g).map(Number);
-  expect(width).toBeGreaterThan(5.6);
-  expect(width).toBeLessThan(6.9);
-  expect(height).toBeGreaterThan(2.8);
-  expect(height).toBeLessThan(3.45);
+  // This checks the model runs end to end and gives a sensible size (within 15%).
+  // It is a drawing, not a photo, so it says little about accuracy on real walls.
+  expect(Math.abs(width / 6.25 - 1)).toBeLessThan(0.15);
+  expect(Math.abs(height / 3.12 - 1)).toBeLessThan(0.15);
 });

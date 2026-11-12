@@ -10,6 +10,7 @@ how accurate the measurements are.
 | `train_wall_model.py` | The same code as a plain Python script (handy for reading diffs) |
 | `measurements.csv` | Tape measure vs app, one row per wall |
 | `metrics-run1.json` | Results of the first training run (ImageNet start, 12 epochs, 30 min on a T4) |
+| `metrics-run2.json` | Results of the second run (ADE20K start, 12 epochs, 32 min on a T4). This is the model in `models/` |
 
 ## 1. Train the model (about an hour, free)
 

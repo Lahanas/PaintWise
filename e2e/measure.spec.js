@@ -72,8 +72,8 @@ test.describe('with a stand-in model', () => {
 });
 
 // The real model and the real ONNX Runtime (served from node_modules instead of the CDN).
-test('the trained model measures the wall in a photo', async ({ page }) => {
-  test.setTimeout(60_000);
+/** @param {import('@playwright/test').Page} page */
+async function useRealOrt(page) {
   const dist = 'node_modules/onnxruntime-web/dist/';
   await page.route('https://cdn.jsdelivr.net/npm/onnxruntime-web@*/dist/**', (route) => {
     const file = route.request().url().split('/dist/')[1];
@@ -84,10 +84,16 @@ test('the trained model measures the wall in a photo', async ({ page }) => {
       headers: { 'access-control-allow-origin': '*' },
     });
   });
+}
+
+test('the trained model measures the wall in a photo', async ({ page }) => {
+  test.setTimeout(60_000);
+  await useRealOrt(page);
   await page.goto('/#preview');
   await expect(page.locator('#measure')).toBeVisible();
-  // A 6.25 m × 3.12 m wall with a 2.03 m door
+  // A drawn 6.25 m × 3.12 m wall with a 2.03 m door (the model doesn't count this frame)
   await page.locator('#photo-upload').setInputFiles('e2e/fixtures/room-door.jpg');
+  await page.locator('#measure-known').fill('2.03');
   await page.getByRole('button', { name: 'Measure wall' }).click();
   const size = page.locator('#measure-result .big');
   await expect(size).toBeVisible({ timeout: 30_000 });
@@ -96,4 +102,19 @@ test('the trained model measures the wall in a photo', async ({ page }) => {
   // It is a drawing, not a photo, so it says little about accuracy on real walls.
   expect(Math.abs(width / 6.25 - 1)).toBeLessThan(0.15);
   expect(Math.abs(height / 3.12 - 1)).toBeLessThan(0.15);
+});
+
+test('the trained model measures a real wall', async ({ page }) => {
+  test.setTimeout(60_000);
+  await useRealOrt(page);
+  await page.goto('/#preview');
+  await expect(page.locator('#measure')).toBeVisible();
+  // A real wall, measured with a tape: 2.21 m floor to ceiling, door frame 2.08 m tall.
+  // Only part of the wall is in the photo, so only the height can be checked.
+  await page.locator('#photo-upload').setInputFiles('e2e/fixtures/real-wall.jpg');
+  await page.getByRole('button', { name: 'Measure wall' }).click();
+  const size = page.locator('#measure-result .big');
+  await expect(size).toBeVisible({ timeout: 30_000 });
+  const height = Number((await size.textContent()).match(/[\d.]+/g)[1]);
+  expect(Math.abs(height / 2.21 - 1)).toBeLessThan(0.1);
 });

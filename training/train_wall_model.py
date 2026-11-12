@@ -6,7 +6,8 @@
 # uses a door (or the ceiling height) as a ruler to measure the wall.
 #
 # - **Model:** [SegFormer-B0](https://arxiv.org/abs/2105.15203), a small, fast segmentation
-#   transformer. Its encoder starts from ImageNet weights. The 4-class head is trained from scratch here.
+#   transformer. It starts from the weights named in `START_FROM` (run 1: ImageNet only;
+#   run 2: already trained on all 150 ADE20K classes). The 4-class output layer is trained here.
 # - **Data:** [ADE20K](https://groups.csail.mit.edu/vision/datasets/ADE20K/) scene parsing
 #   (20k training photos, 150 object classes). We keep the photos that show walls and merge
 #   the 150 classes down to our 4.
@@ -14,7 +15,7 @@
 #   plus `metrics.json` with the accuracy on photos the model never saw.
 #
 # **How to run:** in Colab, choose *Runtime → Change runtime type → T4 GPU*, then
-# *Runtime → Run all*. It takes about an hour (most of it is training). The two files download
+# *Runtime → Run all*. It takes about 30–60 minutes (most of it is training). The two files download
 # at the end. Put `wall-seg.onnx` in the repo's `models/` folder.
 
 # %%
